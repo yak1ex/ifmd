@@ -1,0 +1,3 @@
+[submodule "odstream"]
+	path = odstream
+	url = https://github.com/yak1ex/odstream
