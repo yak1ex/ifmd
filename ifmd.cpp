@@ -1,8 +1,8 @@
 /***********************************************************************/
 /*                                                                     */
-/* axffmpeg.cpp: Source file for axffmpeg                              */
+/* ifmd.cpp: Source file for ifmd                                      */
 /*                                                                     */
-/*     Copyright (C) 2012,2013 Yak! / Yasutaka ATARASHI                */
+/*     Copyright (C) 2013 Yak! / Yasutaka ATARASHI                     */
 /*                                                                     */
 /*     This software is distributed under the terms of a zlib/libpng   */
 /*     License.                                                        */

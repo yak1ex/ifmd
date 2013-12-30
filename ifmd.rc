@@ -4,9 +4,9 @@
 
 /***********************************************************************/
 /*                                                                     */
-/* axffmpeg.rc: Resource file for axffmpeg                             */
+/* ifmd.rc: Resource file for ifmd                                     */
 /*                                                                     */
-/*     Copyright (C) 2012,2013 Yak! / Yasutaka ATARASHI                */
+/*     Copyright (C) 2013 Yak! / Yasutaka ATARASHI                     */
 /*                                                                     */
 /*     This software is distributed under the terms of a zlib/libpng   */
 /*     License.                                                        */
@@ -22,23 +22,18 @@
 
 
 
-IDR_ERROR_IMAGE    RCDATA         ".\\error.bmp"
-
-
-
 //
 // Dialog resources
 //
-IDD_ABOUT_DIALOG DIALOGEX 0, 0, 142, 74
+IDD_ABOUT_DIALOG DIALOGEX 0, 0, 150, 65
 STYLE DS_MODALFRAME | DS_SHELLFONT | WS_CAPTION | WS_POPUP | WS_SYSMENU
-CAPTION "About axffmpeg.spi"
+CAPTION "About ifmd.spi"
 FONT 8, "MS Shell Dlg", 400, 0, 1
 BEGIN
-    DEFPUSHBUTTON   "OK", IDOK, 46, 52, 50, 14
-    LTEXT           "axffmpeg.spi  v0.03 (2013/02/05)", IDC_STATIC, 10, 7, 116, 10, SS_LEFT
-    LTEXT           "Plugin to handle a movie file", IDC_STATIC, 17, 17, 100, 12, SS_LEFT
-    LTEXT           "Written by Yak!", IDC_STATIC, 17, 38, 62, 12, SS_LEFT
-    LTEXT           "as an image container", IDC_STATIC, 52, 26, 85, 12, SS_LEFT
+    DEFPUSHBUTTON   "OK", IDOK, 46, 45, 50, 14
+    LTEXT           "ifmd.spi  v0.03 (2013/02/05)", IDC_STATIC, 10, 7, 116, 10, SS_LEFT
+    LTEXT           "A Susie plugin to render Markdown file", IDC_STATIC, 17, 17, 132, 12, SS_LEFT
+    LTEXT           "Written by Yak!", IDC_STATIC, 17, 30, 62, 12, SS_LEFT
 END
 
 
@@ -90,12 +85,12 @@ BEGIN
         BLOCK "041103A4"
         BEGIN
             VALUE "CompanyName", "Yak!"
-            VALUE "FileDescription", "axffmpeg.spi - Plugin to handle a movie as an image container"
+            VALUE "FileDescription", "ifmd.spi - A Susie plugin to render Markdown file"
             VALUE "FileVersion", "Ver 0.03 (2013/02/05)"
-            VALUE "InternalName", "axffmpeg.spi"
+            VALUE "InternalName", "ifmd.spi"
             VALUE "LegalCopyright", "Written by Yak!"
-            VALUE "OriginalFilename", "axffmpeg.spi"
-            VALUE "ProductName", "axffmpeg.spi"
+            VALUE "OriginalFilename", "ifmd.spi"
+            VALUE "ProductName", "ifmd.spi"
             VALUE "ProductVersion", "Ver 0.03 (2013/02/05)"
 #ifdef DEBUG
             VALUE "PrivateBuild", "Debug build"

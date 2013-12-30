@@ -2,7 +2,7 @@
 /*                                                                     */
 /* resource.h: Header file for windows resource constants              */
 /*                                                                     */
-/*     Copyright (C) 2012 Yak! / Yasutaka ATARASHI                     */
+/*     Copyright (C) 2013 Yak! / Yasutaka ATARASHI                     */
 /*                                                                     */
 /*     This software is distributed under the terms of a zlib/libpng   */
 /*     License.                                                        */
@@ -20,7 +20,6 @@
 #define IDV_VERSIONINFO                         1
 #define IDD_ABOUT_DIALOG                        101
 #define IDD_CONFIG_DIALOG                       102
-#define IDR_ERROR_IMAGE                         103
 #define IDC_EDIT_FFPROBE_PATH                   1000
 #define IDC_BROWSE_FFPROBE                      1001
 #define IDC_EDIT_FFMPEG_PATH                    1002

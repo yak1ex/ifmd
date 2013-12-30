@@ -1,11 +1,13 @@
 #!/bin/sh
 
-if ! grep -q DEBUG axffmpeg.rc; then
+name=ifmd
+
+if ! grep -q DEBUG ${name}.rc; then
     sed -i.bak -e '/#include <windows.h>/i/***********************************************************************/\
 /*                                                                     */\
-/* axffmpeg.rc: Resource file for axffmpeg                             */\
+/* ifmd.rc: Resource file for ifmd                                     */\
 /*                                                                     */\
-/*     Copyright (C) 2012,2013 Yak! / Yasutaka ATARASHI                */\
+/*     Copyright (C) 2013 Yak! / Yasutaka ATARASHI                     */\
 /*                                                                     */\
 /*     This software is distributed under the terms of a zlib/libpng   */\
 /*     License.                                                        */\
@@ -18,9 +20,9 @@ if ! grep -q DEBUG axffmpeg.rc; then
     FILEFLAGS       0x00000000\
 #endif' -e '/ProductVersion/a#ifdef DEBUG\
             VALUE "PrivateBuild", "Debug build"\
-#endif' axffmpeg.rc
-    d2u axffmpeg.rc.bak
-    diff axffmpeg.rc.bak axffmpeg.rc
+#endif' ${name}.rc
+    d2u ${name}.rc.bak
+    diff ${name}.rc.bak ${name}.rc
 fi
 
 if ! grep -q resource\\.h resource.h; then
@@ -28,7 +30,7 @@ if ! grep -q resource\\.h resource.h; then
 /*                                                                     */\
 /* resource.h: Header file for windows resource constants              */\
 /*                                                                     */\
-/*     Copyright (C) 2012 Yak! / Yasutaka ATARASHI                     */\
+/*     Copyright (C) 2013 Yak! / Yasutaka ATARASHI                     */\
 /*                                                                     */\
 /*     This software is distributed under the terms of a zlib/libpng   */\
 /*     License.                                                        */\

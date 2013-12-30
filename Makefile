@@ -1,8 +1,8 @@
 ########################################################################
 #
-# Makefile: Makefile for axffmpeg
+# Makefile: Makefile for ifmd
 #
-#     Copyright (C) 2012 Yak! / Yasutaka ATARASHI
+#     Copyright (C) 2013 Yak! / Yasutaka ATARASHI
 #
 #     This software is distributed under the terms of a zlib/libpng
 #     License.
@@ -11,7 +11,8 @@
 #
 ########################################################################
 
-VER=0_03
+NAME=ifmd
+VER=0_01
 
 CXX = i686-w64-mingw32-g++
 ifdef DEBUG
@@ -24,11 +25,11 @@ LIBS = -L/usr/lib/w32api -lcomctl32
 
 .PHONY: all release-clean release-dir strip bump dist release tag dtag retag release clean
 
-all: axffmpeg.spi
+all: $(NAME).spi
 
-axffmpeg.o: axffmpeg.cpp
+$(NAME).o: $(NAME).cpp
 odstream/odstream.o: odstream/odstream.cpp odstream/odstream.hpp
-axffmpeg.spi: axffmpeg.o axffmpeg.ro libodstream.a axffmpeg.def
+$(NAME).spi: $(NAME).o $(NAME).ro libodstream.a $(NAME).def
 libodstream.a: odstream/odstream.o
 	ar r $@ $^
 
@@ -36,9 +37,9 @@ release-clean:
 	-rm -rf release
 release-dir:
 	-mkdir release
-release/axffmpeg.o: release-dir axffmpeg.cpp
+release/$(NAME).o: release-dir $(NAME).cpp
 release/odstream.o: release-dir odstream.cpp odstream.hpp
-release/axffmpeg.spi: release/axffmpeg.o axffmpeg.ro release/libodstream.a axffmpeg.def
+release/$(NAME).spi: release/$(NAME).o $(NAME).ro release/libodstream.a $(NAME).def
 release/libodstream.a: release/odstream.o
 	ar r $@ $^
 
@@ -48,34 +49,34 @@ release/%.o: %.cpp
 %.spi: %.o
 	$(LINK.cc) -mwindows -shared -static-libgcc -static-libstdc++ -flto -O3 $^ -o $@ $(LIBS)
 
-axffmpeg.ro: axffmpeg.rc error.bmp
+$(NAME).ro: $(NAME).rc
 
 %.ro: %.rc
 	windres $(WINDRESFLAGS) -O coff $< -o $@
 
-strip: axffmpeg.spi
+strip: $(NAME).spi
 	strip $^
 
 bump:
 	./bump.sh $(VER)
 	
-dist: release-clean release/axffmpeg.spi
-	-rm -rf source source.zip axffmpeg-$(VER).zip disttemp
+dist: release-clean release/$(NAME).spi
+	-rm -rf source source.zip $(NAME)-$(VER).zip disttemp
 	mkdir source
 	git archive --worktree-attributes master | tar xf - -C source
 	(cd source; zip ../source.zip *)
 	-rm -rf source
 	mkdir disttemp
-	strip release/axffmpeg.spi
-	cp release/axffmpeg.spi axffmpeg.txt source.zip disttemp
-	(cd disttemp; zip ../axffmpeg-$(VER).zip *)
+	strip release/$(NAME).spi
+	cp release/$(NAME).spi $(NAME).txt source.zip disttemp
+	(cd disttemp; zip ../$(NAME)-$(VER).zip *)
 	-rm -rf disttemp release
 
 tag:
-	git tag axffmpeg-$(VER)
+	git tag $(NAME)-$(VER)
 
 dtag:
-	-git tag -d axffmpeg-$(VER)
+	-git tag -d $(NAME)-$(VER)
 
 retag: dtag tag
 
