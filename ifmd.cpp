@@ -116,16 +116,57 @@ INT PASCAL IsSupported(LPSTR filename, DWORD dw)
 
 INT PASCAL GetPictureInfo(LPSTR buf, LONG len, UINT flag, SPI_PICTINFO *lpInfo)
 {
-	return SPI_ERR_NOT_IMPLEMENTED;
+	// if ((flag & 7) == 0)
+	//     buf -> filename
+	//     len -> offset
+	// else
+	//     buf -> pointer
+	//     len -> size
+	DEBUG_LOG(<< "GetPictureInfo(" << std::string(buf, std::min<DWORD>(len, 1024)) << ',' << len << ',' << std::hex << std::setw(8) << std::setfill('0') << flag << ',' << lpInfo << ')' << std::endl);
+	lpInfo->left = lpInfo->top = 0;
+	lpInfo->width = lpInfo->height = 256;
+	lpInfo->x_density = lpInfo->y_density = 0;
+	lpInfo->colorDepth = 24;
+	lpInfo->hInfo = 0;
+	return SPI_ERR_NO_ERROR;
 }
 
 INT PASCAL GetPicture(LPSTR buf, LONG len, UINT flag, HANDLE *pHBInfo, HANDLE *pHBm, FARPROC lpPrgressCallback, LONG lData)
 {
-	return SPI_ERR_NOT_IMPLEMENTED;
+	DEBUG_LOG(<< "GetPicture(" << std::string(buf, std::min<DWORD>(len, 1024)) << ',' << len << ',' << std::hex << std::setw(8) << std::setfill('0') << flag << ')' << std::endl);
+	HLOCAL hInfo = LocalAlloc(LMEM_MOVEABLE, sizeof(BITMAPINFOHEADER));
+//	assert(pHBInfo);
+	*pHBInfo = LocalLock(hInfo);
+	BITMAPINFOHEADER *pHBInfo_ = static_cast<BITMAPINFOHEADER*>(static_cast<void*>(*pHBInfo));
+	pHBInfo_->biSize = sizeof(BITMAPINFOHEADER);
+	pHBInfo_->biWidth = pHBInfo_->biHeight = 256;
+	pHBInfo_->biPlanes = 1;
+	pHBInfo_->biBitCount = 24;
+	pHBInfo_->biCompression= BI_RGB;
+	pHBInfo_->biSizeImage = 0;
+	pHBInfo_->biXPelsPerMeter = pHBInfo_->biYPelsPerMeter = 0;
+	pHBInfo_->biClrUsed = pHBInfo_->biClrImportant = 0;
+
+	HLOCAL hBm = LocalAlloc(LMEM_MOVEABLE, 256 * 256 * 3);
+//	assert(pHBm);
+	*pHBm = LocalLock(hBm);
+	BYTE *p = static_cast<BYTE*>(static_cast<void*>(*pHBm));
+	BYTE *pp = p + 256*256*3;
+	for(int i = 0; i < 256; ++i) {
+		pp -= 256*3;
+		for(int j = 0; j < 256; ++j) {
+			*pp++ = ((i%8) & 1) ? 255 : 0;
+			*pp++ = ((i%8) & 4) ? 255 : 0;
+			*pp++ = ((i%8) & 2) ? 255 : 0;
+		}
+		pp -= 256*3;
+	}
+	return SPI_ERR_NO_ERROR;
 }
 
 INT PASCAL GetPreview(LPSTR buf, LONG len, UINT flag, HANDLE *pHBInfo, HANDLE *pHBm, FARPROC lpPrgressCallback, LONG lData)
 {
+	DEBUG_LOG(<< "GetPreview(" << std::string(buf, std::min<DWORD>(len, 1024)) << ',' << len << ',' << std::hex << std::setw(8) << std::setfill('0') << flag << ')' << std::endl);
 	return SPI_ERR_NOT_IMPLEMENTED;
 }
 
