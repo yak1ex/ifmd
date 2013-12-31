@@ -1,3 +1,6 @@
 [submodule "odstream"]
 	path = odstream
 	url = https://github.com/yak1ex/odstream
+[submodule "discount"]
+	path = discount
+	url = https://github.com/Orc/discount.git
