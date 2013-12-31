@@ -151,9 +151,34 @@ INT PASCAL GetPictureInfo(LPSTR buf, LONG len, UINT flag, SPI_PICTINFO *lpInfo)
 	return SPI_ERR_NO_ERROR;
 }
 
+static bool GetHTML(LPSTR buf, LONG len, UINT flag, std::string &sHTML)
+{
+	Document *ctx;
+	if((flag & 7) == 0) { // filename
+		FILE *fp = std::fopen(buf, "r");
+		std::fseek(fp, len, SEEK_SET);
+		ctx = mkd_in(fp, 0);
+	} else { // pointer
+		ctx = mkd_string(buf, len, 0);
+	}
+	if(!mkd_compile(ctx, 0)) {
+		mkd_cleanup(ctx);
+		return false;
+	}
+	char *body;
+	int body_size = mkd_document(ctx, &body);
+	DEBUG_LOG(<< "GetHTML(): by discount: " << body << std::endl);
+	sHTML = "<html><body>";
+	sHTML += body;
+	sHTML += "</body></html>";
+
+	mkd_cleanup(ctx);
+	return true;
+}
+
 // ref. http://eternalwindows.jp/ole/oledraw/oledraw01.html
 // ref: http://eternalwindows.jp/browser/bandobject/bandobject03.html
-void DPtoHIMETRIC(LPSIZEL lpSizel)
+static void DPtoHIMETRIC(LPSIZEL lpSizel)
 {
 	HDC hdc;
 	const int HIMETRIC_INCH = 2540;
@@ -164,32 +189,9 @@ void DPtoHIMETRIC(LPSIZEL lpSizel)
 	ReleaseDC(NULL, hdc);
 }
 
-INT PASCAL GetPicture(LPSTR buf, LONG len, UINT flag, HANDLE *pHBInfo, HANDLE *pHBm, FARPROC lpPrgressCallback, LONG lData)
+static bool RenderHTML(const std::string& sHTML, HANDLE *pHBInfo, HANDLE *pHBm)
 {
-	DEBUG_LOG(<< "GetPicture(" << ((flag & 7) == 0 ? std::string(buf) : std::string(buf, std::min<DWORD>(len, 128))) << ',' << len << ',' << std::hex << std::setw(8) << std::setfill('0') << flag << ')' << std::endl);
-
-	Document *ctx;
-	if((flag & 7) == 0) { // filename
-		FILE *fp = std::fopen(buf, "r");
-		std::fseek(fp, len, SEEK_SET);
-		ctx = mkd_in(fp, 0);
-	} else { // pointer
-		ctx = mkd_string(buf, len, 0);
-	}
-	if(!mkd_compile(ctx, 0)) {
-		DEBUG_LOG(<< "GetPicture(): couldn't compile input");
-		mkd_cleanup(ctx);
-		return SPI_ERR_INTERNAL_ERROR;
-	}
-	char *body;
-	int body_size = mkd_document(ctx, &body);
-	DEBUG_LOG(<< "GetPicture(): by discount: " << body << std::endl);
-	std::string sHTML = "<html><body>";
-	sHTML += body;
-	sHTML += "</body></html>";
-
 	IHTMLDocument2Ptr pDoc;
-//	HRESULT hrCreate = pDoc.CreateInstance(L"htmlFile", 0, CLSCTX_INPROC_SERVER);
 	HRESULT hrCreate = pDoc.CreateInstance(CLSID_HTMLDocument, 0, CLSCTX_INPROC_SERVER);
 	dhCallMethod(pDoc, L".Writeln(%s)", sHTML.c_str());
 	dhCallMethod(pDoc, L".Write");
@@ -197,7 +199,7 @@ INT PASCAL GetPicture(LPSTR buf, LONG len, UINT flag, HANDLE *pHBInfo, HANDLE *p
 
 	CDhStringA szHTML;
 	dhGetValue(L"%s", &szHTML, pDoc, L".documentElement.outerHTML");
-	DEBUG_LOG(<< "GetPicture(): in MSHTML" << szHTML << std::endl);
+	DEBUG_LOG(<< "RenderHTML(): " << szHTML << std::endl);
 
 	RECT imageRect = {0, 0, 256, 256};
 	HDC hDC = GetDC(0);
@@ -210,8 +212,6 @@ INT PASCAL GetPicture(LPSTR buf, LONG len, UINT flag, HANDLE *pHBInfo, HANDLE *p
 	DPtoHIMETRIC(&sizel);
 	pOleObject->SetExtent(DVASPECT_CONTENT, &sizel);
 	OleDraw(pDoc, DVASPECT_CONTENT, hCompDC, &imageRect);
-
-	mkd_cleanup(ctx);
 
 //	assert(pHBInfo);
 	*pHBInfo = LocalAlloc(LMEM_MOVEABLE, sizeof(BITMAPINFOHEADER));
@@ -234,6 +234,24 @@ INT PASCAL GetPicture(LPSTR buf, LONG len, UINT flag, HANDLE *pHBInfo, HANDLE *p
 	SelectObject(hCompDC, hBitmapOld);
 	DeleteObject(hBitmap);
 	DeleteDC(hCompDC);
+
+	return true;
+}
+
+INT PASCAL GetPicture(LPSTR buf, LONG len, UINT flag, HANDLE *pHBInfo, HANDLE *pHBm, FARPROC lpPrgressCallback, LONG lData)
+{
+	DEBUG_LOG(<< "GetPicture(" << ((flag & 7) == 0 ? std::string(buf) : std::string(buf, std::min<DWORD>(len, 128))) << ',' << len << ',' << std::hex << std::setw(8) << std::setfill('0') << flag << ')' << std::endl);
+
+	std::string sHTML;
+	if(!GetHTML(buf, len, flag, sHTML)) {
+		DEBUG_LOG(<< "GetPicture(): couldn't compile input");
+		return SPI_ERR_INTERNAL_ERROR;
+	}
+	if(!RenderHTML(sHTML, pHBInfo, pHBm)) {
+		DEBUG_LOG(<< "GetPicture(): couldn't render HTML");
+		return SPI_ERR_INTERNAL_ERROR;
+	}
+
 	return SPI_ERR_NO_ERROR;
 }
 
