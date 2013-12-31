@@ -122,7 +122,7 @@ INT PASCAL GetPictureInfo(LPSTR buf, LONG len, UINT flag, SPI_PICTINFO *lpInfo)
 	// else
 	//     buf -> pointer
 	//     len -> size
-	DEBUG_LOG(<< "GetPictureInfo(" << std::string(buf, std::min<DWORD>(len, 1024)) << ',' << len << ',' << std::hex << std::setw(8) << std::setfill('0') << flag << ',' << lpInfo << ')' << std::endl);
+	DEBUG_LOG(<< "GetPictureInfo(" << ((flag & 7) == 0 ? std::string(buf) : std::string(buf, std::min<DWORD>(len, 128))) << ',' << len << ',' << std::hex << std::setw(8) << std::setfill('0') << flag << ',' << lpInfo << ')' << std::endl);
 	lpInfo->left = lpInfo->top = 0;
 	lpInfo->width = lpInfo->height = 256;
 	lpInfo->x_density = lpInfo->y_density = 0;
@@ -133,7 +133,8 @@ INT PASCAL GetPictureInfo(LPSTR buf, LONG len, UINT flag, SPI_PICTINFO *lpInfo)
 
 INT PASCAL GetPicture(LPSTR buf, LONG len, UINT flag, HANDLE *pHBInfo, HANDLE *pHBm, FARPROC lpPrgressCallback, LONG lData)
 {
-	DEBUG_LOG(<< "GetPicture(" << std::string(buf, std::min<DWORD>(len, 1024)) << ',' << len << ',' << std::hex << std::setw(8) << std::setfill('0') << flag << ')' << std::endl);
+	DEBUG_LOG(<< "GetPicture(" << ((flag & 7) == 0 ? std::string(buf) : std::string(buf, std::min<DWORD>(len, 128))) << ',' << len << ',' << std::hex << std::setw(8) << std::setfill('0') << flag << ')' << std::endl);
+
 	HLOCAL hInfo = LocalAlloc(LMEM_MOVEABLE, sizeof(BITMAPINFOHEADER));
 //	assert(pHBInfo);
 	*pHBInfo = LocalLock(hInfo);
