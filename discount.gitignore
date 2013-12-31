@@ -1,0 +1,17 @@
+.gitignore
+*.o
+*.exe
+*.a
+Makefile
+config.cmd
+config.h
+config.log
+config.mak
+config.md
+config.sub
+blocktags
+libmarkdown
+librarian.sh
+mkdio.h
+version.c
+
