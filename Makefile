@@ -43,12 +43,15 @@ release-clean:
 release-dir:
 	-mkdir release
 release/$(NAME).o: release-dir $(NAME).cpp
-release/odstream.o: release-dir odstream.cpp odstream.hpp
-release/$(NAME).spi: release/$(NAME).o $(NAME).ro release/libodstream.a $(NAME).def
+release/odstream.o: release-dir odstream/odstream.cpp odstream/odstream.hpp
+release/$(NAME).spi: release/$(NAME).o $(NAME).ro release/libodstream.a $(NAME).def discount/libmarkdown.a disphelper/disphelper.o
 release/libodstream.a: release/odstream.o
 	ar r $@ $^
 
 release/%.o: %.cpp
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
+
+release/%.o: odstream/%.cpp
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 %.spi: %.o
