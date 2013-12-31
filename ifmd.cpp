@@ -134,23 +134,6 @@ INT PASCAL IsSupported(LPSTR filename, DWORD dw)
 	// not reached here
 }
 
-INT PASCAL GetPictureInfo(LPSTR buf, LONG len, UINT flag, SPI_PICTINFO *lpInfo)
-{
-	// if ((flag & 7) == 0)
-	//     buf -> filename
-	//     len -> offset
-	// else
-	//     buf -> pointer
-	//     len -> size
-	DEBUG_LOG(<< "GetPictureInfo(" << ((flag & 7) == 0 ? std::string(buf) : std::string(buf, std::min<DWORD>(len, 128))) << ',' << len << ',' << std::hex << std::setw(8) << std::setfill('0') << flag << ',' << lpInfo << ')' << std::endl);
-	lpInfo->left = lpInfo->top = 0;
-	lpInfo->width = lpInfo->height = 256;
-	lpInfo->x_density = lpInfo->y_density = 0;
-	lpInfo->colorDepth = 24;
-	lpInfo->hInfo = 0;
-	return SPI_ERR_NO_ERROR;
-}
-
 static bool GetHTML(LPSTR buf, LONG len, UINT flag, std::string &sHTML)
 {
 	Document *ctx;
@@ -236,6 +219,43 @@ static bool RenderHTML(const std::string& sHTML, HANDLE *pHBInfo, HANDLE *pHBm)
 	DeleteDC(hCompDC);
 
 	return true;
+}
+
+INT PASCAL GetPictureInfo(LPSTR buf, LONG len, UINT flag, SPI_PICTINFO *lpInfo)
+{
+	// if ((flag & 7) == 0)
+	//     buf -> filename
+	//     len -> offset
+	// else
+	//     buf -> pointer
+	//     len -> size
+	DEBUG_LOG(<< "GetPictureInfo(" << ((flag & 7) == 0 ? std::string(buf) : std::string(buf, std::min<DWORD>(len, 128))) << ',' << len << ',' << std::hex << std::setw(8) << std::setfill('0') << flag << ',' << lpInfo << ')' << std::endl);
+
+	std::string sHTML;
+	if(!GetHTML(buf, len, flag, sHTML)) {
+		DEBUG_LOG(<< "GetPicture(): couldn't compile input");
+		return SPI_ERR_INTERNAL_ERROR;
+	}
+	HANDLE hBInfo, hBm;
+	if(!RenderHTML(sHTML, &hBInfo, &hBm)) {
+		DEBUG_LOG(<< "GetPicture(): couldn't render HTML");
+		return SPI_ERR_INTERNAL_ERROR;
+	}
+
+	BITMAPINFOHEADER *pHBInfo = static_cast<BITMAPINFOHEADER*>(LocalLock(hBInfo));
+	lpInfo->left = lpInfo->top = 0;
+	lpInfo->width = pHBInfo->biWidth;
+	lpInfo->height = pHBInfo->biHeight;
+	lpInfo->x_density = pHBInfo->biXPelsPerMeter;
+	lpInfo->y_density = pHBInfo->biYPelsPerMeter;
+	lpInfo->colorDepth = pHBInfo->biBitCount;
+	lpInfo->hInfo = 0;
+
+	LocalUnlock(hBInfo);
+	LocalFree(hBInfo);
+	LocalFree(hBm);
+
+	return SPI_ERR_NO_ERROR;
 }
 
 INT PASCAL GetPicture(LPSTR buf, LONG len, UINT flag, HANDLE *pHBInfo, HANDLE *pHBm, FARPROC lpPrgressCallback, LONG lData)
