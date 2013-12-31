@@ -31,9 +31,26 @@
 #else
 #define DEBUG_LOG(ARG) do { } while(0)
 #endif
+#include "disphelper/disphelper.h"
+#include <exdisp.h>
+#include <comdef.h>
+#include <mshtml.h>
+
+// Discount has many conflicts with Win32 headers, so only required functions are declared.
+typedef struct document Document;
 extern "C" {
-#include "discount/markdown.h"
-};
+	int mkd_compile(Document *, DWORD);
+	void mkd_cleanup(Document *);
+	Document *mkd_in(FILE *, DWORD);
+	Document *mkd_string(const char*,int, DWORD);
+	int  mkd_document(Document *, char **);
+}
+
+__CRT_UUID_DECL(IHTMLDocument2, 0x332C4425, 0x26CB, 0x11D0, 0xB4, 0x83, 0x00, 0xC0, 0x4F, 0xD9, 0x01, 0x19);
+const CLSID CLSID_HTMLDocument = { 0x25336920, 0x03F9, 0x11CF, 0x8F, 0xD0, 0x00, 0xAA, 0x00, 0x68, 0x6F, 0x13 };
+// Not deeply analyzed, but definition in comdefsp.h seems to have no effect.
+_COM_SMARTPTR_TYPEDEF(IHTMLDocument2,__uuidof(IHTMLDocument2));
+_COM_SMARTPTR_TYPEDEF(IOleObject,__uuidof(IOleObject));
 
 typedef std::pair<std::string, unsigned long> Key;
 typedef std::vector<char> Data;
@@ -134,6 +151,19 @@ INT PASCAL GetPictureInfo(LPSTR buf, LONG len, UINT flag, SPI_PICTINFO *lpInfo)
 	return SPI_ERR_NO_ERROR;
 }
 
+// ref. http://eternalwindows.jp/ole/oledraw/oledraw01.html
+// ref: http://eternalwindows.jp/browser/bandobject/bandobject03.html
+void DPtoHIMETRIC(LPSIZEL lpSizel)
+{
+	HDC hdc;
+	const int HIMETRIC_INCH = 2540;
+
+	hdc = GetDC(NULL);
+	lpSizel->cx = MulDiv(lpSizel->cx, HIMETRIC_INCH, GetDeviceCaps(hdc, LOGPIXELSX));
+	lpSizel->cy = MulDiv(lpSizel->cy, HIMETRIC_INCH, GetDeviceCaps(hdc, LOGPIXELSY));
+	ReleaseDC(NULL, hdc);
+}
+
 INT PASCAL GetPicture(LPSTR buf, LONG len, UINT flag, HANDLE *pHBInfo, HANDLE *pHBm, FARPROC lpPrgressCallback, LONG lData)
 {
 	DEBUG_LOG(<< "GetPicture(" << ((flag & 7) == 0 ? std::string(buf) : std::string(buf, std::min<DWORD>(len, 128))) << ',' << len << ',' << std::hex << std::setw(8) << std::setfill('0') << flag << ')' << std::endl);
@@ -153,13 +183,39 @@ INT PASCAL GetPicture(LPSTR buf, LONG len, UINT flag, HANDLE *pHBInfo, HANDLE *p
 	}
 	char *body;
 	int body_size = mkd_document(ctx, &body);
-	DEBUG_LOG(<< "GetPicture(): " << body);
+	DEBUG_LOG(<< "GetPicture(): by discount: " << body << std::endl);
+	std::string sHTML = "<html><body>";
+	sHTML += body;
+	sHTML += "</body></html>";
+
+	IHTMLDocument2Ptr pDoc;
+//	HRESULT hrCreate = pDoc.CreateInstance(L"htmlFile", 0, CLSCTX_INPROC_SERVER);
+	HRESULT hrCreate = pDoc.CreateInstance(CLSID_HTMLDocument, 0, CLSCTX_INPROC_SERVER);
+	dhCallMethod(pDoc, L".Writeln(%s)", sHTML.c_str());
+	dhCallMethod(pDoc, L".Write");
+	dhCallMethod(pDoc, L".Close");
+
+	CDhStringA szHTML;
+	dhGetValue(L"%s", &szHTML, pDoc, L".documentElement.outerHTML");
+	DEBUG_LOG(<< "GetPicture(): in MSHTML" << szHTML << std::endl);
+
+	RECT imageRect = {0, 0, 256, 256};
+	HDC hDC = GetDC(0);
+	HDC hCompDC = CreateCompatibleDC(hDC);
+	HBITMAP hBitmap = CreateCompatibleBitmap(hDC, 256, 256);
+	HGDIOBJ hBitmapOld = SelectObject(hCompDC, hBitmap);
+	IOleObjectPtr pOleObject;
+	pDoc->QueryInterface(IID_PPV_ARGS(&pOleObject));
+	SIZEL sizel = { 256, 256 };
+	DPtoHIMETRIC(&sizel);
+	pOleObject->SetExtent(DVASPECT_CONTENT, &sizel);
+	OleDraw(pDoc, DVASPECT_CONTENT, hCompDC, &imageRect);
+
 	mkd_cleanup(ctx);
 
-	HLOCAL hInfo = LocalAlloc(LMEM_MOVEABLE, sizeof(BITMAPINFOHEADER));
 //	assert(pHBInfo);
-	*pHBInfo = LocalLock(hInfo);
-	BITMAPINFOHEADER *pHBInfo_ = static_cast<BITMAPINFOHEADER*>(static_cast<void*>(*pHBInfo));
+	*pHBInfo = LocalAlloc(LMEM_MOVEABLE, sizeof(BITMAPINFOHEADER));
+	BITMAPINFOHEADER *pHBInfo_ = static_cast<BITMAPINFOHEADER*>(LocalLock(*pHBInfo));
 	pHBInfo_->biSize = sizeof(BITMAPINFOHEADER);
 	pHBInfo_->biWidth = pHBInfo_->biHeight = 256;
 	pHBInfo_->biPlanes = 1;
@@ -169,20 +225,15 @@ INT PASCAL GetPicture(LPSTR buf, LONG len, UINT flag, HANDLE *pHBInfo, HANDLE *p
 	pHBInfo_->biXPelsPerMeter = pHBInfo_->biYPelsPerMeter = 0;
 	pHBInfo_->biClrUsed = pHBInfo_->biClrImportant = 0;
 
-	HLOCAL hBm = LocalAlloc(LMEM_MOVEABLE, 256 * 256 * 3);
 //	assert(pHBm);
-	*pHBm = LocalLock(hBm);
-	BYTE *p = static_cast<BYTE*>(static_cast<void*>(*pHBm));
-	BYTE *pp = p + 256*256*3;
-	for(int i = 0; i < 256; ++i) {
-		pp -= 256*3;
-		for(int j = 0; j < 256; ++j) {
-			*pp++ = ((i%8) & 1) ? 255 : 0;
-			*pp++ = ((i%8) & 4) ? 255 : 0;
-			*pp++ = ((i%8) & 2) ? 255 : 0;
-		}
-		pp -= 256*3;
-	}
+	*pHBm = LocalAlloc(LMEM_MOVEABLE, 256 * 256 * 3);
+	GetDIBits(hCompDC, hBitmap, 0, 256, LocalLock(*pHBm), static_cast<LPBITMAPINFO>(static_cast<void*>(pHBInfo_)), DIB_RGB_COLORS);
+
+	LocalUnlock(*pHBInfo);
+	LocalUnlock(*pHBm);
+	SelectObject(hCompDC, hBitmapOld);
+	DeleteObject(hBitmap);
+	DeleteDC(hCompDC);
 	return SPI_ERR_NO_ERROR;
 }
 
@@ -405,9 +456,13 @@ extern "C" BOOL APIENTRY DllMain(HANDLE hModule, DWORD ul_reason_for_call, LPVOI
 {
 	switch (ul_reason_for_call) {
 		case DLL_PROCESS_ATTACH:
+			CoInitializeEx(NULL, COINIT_MULTITHREADED);
 			g_hInstance = (HINSTANCE)hModule;
 			SetIniFileName(hModule);
 			LoadFromIni();
+			break;
+		case DLL_PROCESS_DETACH:
+			CoUninitialize();
 			break;
 	}
 	return TRUE;

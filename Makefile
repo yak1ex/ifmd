@@ -14,14 +14,17 @@
 NAME=ifmd
 VER=0_01
 
+CC = i686-w64-mingw32-gcc
 CXX = i686-w64-mingw32-g++
 ifdef DEBUG
+CFLAGS = -DDEBUG -Wall -O3 -flto
 CXXFLAGS = -DDEBUG -Wall -O3 -flto -I /usr/local/include -I ./odstream
 WINDRESFLAGS = -D DEBUG
 else
+CFLAGS = -Wall -O3 -flto
 CXXFLAGS = -Wall -O3 -flto -I /usr/local/include
 endif
-LIBS = -L/usr/lib/w32api -lcomctl32
+LIBS = -L/usr/lib/w32api -lcomctl32 -lole32 -loleaut32 -luuid
 
 .PHONY: all release-clean release-dir strip bump dist release tag dtag retag release clean
 
@@ -29,7 +32,7 @@ all: $(NAME).spi
 
 $(NAME).o: $(NAME).cpp
 odstream/odstream.o: odstream/odstream.cpp odstream/odstream.hpp
-$(NAME).spi: $(NAME).o $(NAME).ro libodstream.a $(NAME).def discount/libmarkdown.a
+$(NAME).spi: $(NAME).o $(NAME).ro libodstream.a $(NAME).def discount/libmarkdown.a disphelper/disphelper.o
 libodstream.a: odstream/odstream.o
 	ar r $@ $^
 discount/libmarkdown.a:
