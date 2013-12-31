@@ -46,10 +46,13 @@ extern "C" {
 	int  mkd_document(Document *, char **);
 }
 
-__CRT_UUID_DECL(IHTMLDocument2, 0x332C4425, 0x26CB, 0x11D0, 0xB4, 0x83, 0x00, 0xC0, 0x4F, 0xD9, 0x01, 0x19);
-const CLSID CLSID_HTMLDocument = { 0x25336920, 0x03F9, 0x11CF, 0x8F, 0xD0, 0x00, 0xAA, 0x00, 0x68, 0x6F, 0x13 };
+__CRT_UUID_DECL(IHTMLDocument2, 0x332c4425, 0x26cb, 0x11d0, 0xb4, 0x83, 0x00, 0xc0, 0x4f, 0xd9, 0x01, 0x19);
+const CLSID CLSID_HTMLDocument = { 0x25336920, 0x03f9, 0x11cf, 0x8f, 0xd0, 0x00, 0xaa, 0x00, 0x68, 0x6f, 0x13 };
+__CRT_UUID_DECL(IHTMLElement2, 0x3050f434, 0x98b5, 0x11cf, 0xbb,0x82, 0x00,0xaa,0x00,0xbd,0xce,0x0b);
 // Not deeply analyzed, but definition in comdefsp.h seems to have no effect.
 _COM_SMARTPTR_TYPEDEF(IHTMLDocument2,__uuidof(IHTMLDocument2));
+_COM_SMARTPTR_TYPEDEF(IHTMLElement,__uuidof(IHTMLElement));
+_COM_SMARTPTR_TYPEDEF(IHTMLElement2,__uuidof(IHTMLElement2));
 _COM_SMARTPTR_TYPEDEF(IOleObject,__uuidof(IOleObject));
 
 typedef std::pair<std::string, unsigned long> Key;
@@ -151,12 +154,51 @@ static bool GetHTML(LPSTR buf, LONG len, UINT flag, std::string &sHTML)
 	char *body;
 	int body_size = mkd_document(ctx, &body);
 	DEBUG_LOG(<< "GetHTML(): by discount: " << body << std::endl);
-	sHTML = "<html><body>";
+	sHTML = "<html><head><style type=\"text/css\">body { max-width: 300px; white-space: normal }</style></head><body>";
 	sHTML += body;
 	sHTML += "</body></html>";
 
 	mkd_cleanup(ctx);
 	return true;
+}
+
+// Extracted from DispHelper 0.81 samples_cpp/mshtml.cpp
+/* **************************************************************************
+ * WaitForHTMLDocToLoad:
+ *   This function waits for an html document's readystate to equal 'complete'
+ * so that its dom can be used.
+ *   You may wish to implement a timeout.
+ *
+ ============================================================================ */
+HRESULT WaitForHTMLDocToLoad(IDispatch * pDoc)
+{
+	HRESULT hr;
+
+	while (TRUE)
+	{
+		MSG msg;
+		CDhStringW szReadyState;
+
+		hr = dhGetValue(L"%S", &szReadyState, pDoc, L".readyState");
+
+		if (FAILED(hr) || !szReadyState || 0 == wcsicmp(szReadyState, L"complete"))
+		{
+			break;
+		}
+
+		/* We must pump the message loop while the document is downloading */
+		if (WAIT_TIMEOUT != MsgWaitForMultipleObjects(0, NULL, FALSE, 250, QS_ALLEVENTS))
+		{
+			while(PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+			{
+				TranslateMessage(&msg);
+				DispatchMessage(&msg);
+			}
+		}
+		DEBUG_LOG(<< "WaitForHTMLDocToLoad(): waiting..." << std::endl);
+	}
+
+	return hr;
 }
 
 // ref. http://eternalwindows.jp/ole/oledraw/oledraw01.html
@@ -176,23 +218,53 @@ static bool RenderHTML(const std::string& sHTML, HANDLE *pHBInfo, HANDLE *pHBm)
 {
 	IHTMLDocument2Ptr pDoc;
 	HRESULT hrCreate = pDoc.CreateInstance(CLSID_HTMLDocument, 0, CLSCTX_INPROC_SERVER);
+	if(FAILED(hrCreate)) {
+		DEBUG_LOG(<< "RenderHTML(): Creating HTMLDocument failed." << std::endl);
+	}
 	dhCallMethod(pDoc, L".Writeln(%s)", sHTML.c_str());
 	dhCallMethod(pDoc, L".Write");
 	dhCallMethod(pDoc, L".Close");
+
+	WaitForHTMLDocToLoad(pDoc);
 
 	CDhStringA szHTML;
 	dhGetValue(L"%s", &szHTML, pDoc, L".documentElement.outerHTML");
 	DEBUG_LOG(<< "RenderHTML(): " << szHTML << std::endl);
 
-	RECT imageRect = {0, 0, 256, 256};
+	RECT imageRect = {0, 0, 640, 480};
 	HDC hDC = GetDC(0);
 	HDC hCompDC = CreateCompatibleDC(hDC);
-	HBITMAP hBitmap = CreateCompatibleBitmap(hDC, 256, 256);
-	HGDIOBJ hBitmapOld = SelectObject(hCompDC, hBitmap);
+	HBITMAP hBitmap0 = CreateCompatibleBitmap(hDC, imageRect.right, imageRect.bottom);
+	HGDIOBJ hBitmapOld = SelectObject(hCompDC, hBitmap0);
 	IOleObjectPtr pOleObject;
 	pDoc->QueryInterface(IID_PPV_ARGS(&pOleObject));
-	SIZEL sizel = { 256, 256 };
+	SIZEL sizel = { imageRect.right, imageRect.bottom };
 	DPtoHIMETRIC(&sizel);
+	DEBUG_LOG(<< "RenderHTML(): " << static_cast<void*>(pOleObject) << " cx: " << sizel.cx << " cy: " << sizel.cy << std::endl);
+	pOleObject->SetExtent(DVASPECT_CONTENT, &sizel);
+	OleDraw(pDoc, DVASPECT_CONTENT, hCompDC, &imageRect);
+
+	LONG lWidth, lHeight;
+	IHTMLElementPtr pElement;
+	HRESULT hr = pDoc->get_body(&pElement);
+	if(FAILED(hr)) {
+		DEBUG_LOG(<< "RenderHTML(): Getting body element failed." << std::endl);
+	}
+	IHTMLElement2Ptr pElement2;
+	pElement->QueryInterface(IID_PPV_ARGS(&pElement2));
+	pElement2->get_scrollWidth(&lWidth);
+	pElement2->get_scrollHeight(&lHeight);
+	DEBUG_LOG(<< "RenderHTML(): " << static_cast<void*>(pElement2) << " width: " << lWidth << " height: " << lHeight << std::endl);
+
+	imageRect.right = lWidth;
+	imageRect.bottom = lHeight;
+	HBITMAP hBitmap = CreateCompatibleBitmap(hDC, imageRect.right, imageRect.bottom);
+	SelectObject(hCompDC, hBitmap);
+	DeleteObject(hBitmap0);
+	sizel.cx = imageRect.right;
+	sizel.cy = imageRect.bottom;
+	DPtoHIMETRIC(&sizel);
+	DEBUG_LOG(<< "RenderHTML(): " << static_cast<void*>(pOleObject) << " cx: " << sizel.cx << " cy: " << sizel.cy << std::endl);
 	pOleObject->SetExtent(DVASPECT_CONTENT, &sizel);
 	OleDraw(pDoc, DVASPECT_CONTENT, hCompDC, &imageRect);
 
@@ -200,7 +272,8 @@ static bool RenderHTML(const std::string& sHTML, HANDLE *pHBInfo, HANDLE *pHBm)
 	*pHBInfo = LocalAlloc(LMEM_MOVEABLE, sizeof(BITMAPINFOHEADER));
 	BITMAPINFOHEADER *pHBInfo_ = static_cast<BITMAPINFOHEADER*>(LocalLock(*pHBInfo));
 	pHBInfo_->biSize = sizeof(BITMAPINFOHEADER);
-	pHBInfo_->biWidth = pHBInfo_->biHeight = 256;
+	pHBInfo_->biWidth = imageRect.right;
+	pHBInfo_->biHeight = imageRect.bottom;
 	pHBInfo_->biPlanes = 1;
 	pHBInfo_->biBitCount = 24;
 	pHBInfo_->biCompression= BI_RGB;
@@ -209,8 +282,8 @@ static bool RenderHTML(const std::string& sHTML, HANDLE *pHBInfo, HANDLE *pHBm)
 	pHBInfo_->biClrUsed = pHBInfo_->biClrImportant = 0;
 
 //	assert(pHBm);
-	*pHBm = LocalAlloc(LMEM_MOVEABLE, 256 * 256 * 3);
-	GetDIBits(hCompDC, hBitmap, 0, 256, LocalLock(*pHBm), static_cast<LPBITMAPINFO>(static_cast<void*>(pHBInfo_)), DIB_RGB_COLORS);
+	*pHBm = LocalAlloc(LMEM_MOVEABLE, (imageRect.right * 3 + 3) / 4 * 4 * imageRect.bottom);
+	GetDIBits(hCompDC, hBitmap, 0, imageRect.bottom, LocalLock(*pHBm), static_cast<LPBITMAPINFO>(static_cast<void*>(pHBInfo_)), DIB_RGB_COLORS);
 
 	LocalUnlock(*pHBInfo);
 	LocalUnlock(*pHBm);
@@ -255,6 +328,7 @@ INT PASCAL GetPictureInfo(LPSTR buf, LONG len, UINT flag, SPI_PICTINFO *lpInfo)
 	LocalFree(hBInfo);
 	LocalFree(hBm);
 
+	DEBUG_LOG(<< "GetPictureInfo(): Returning" << std::endl);
 	return SPI_ERR_NO_ERROR;
 }
 
@@ -272,6 +346,7 @@ INT PASCAL GetPicture(LPSTR buf, LONG len, UINT flag, HANDLE *pHBInfo, HANDLE *p
 		return SPI_ERR_INTERNAL_ERROR;
 	}
 
+	DEBUG_LOG(<< "GetPicture(): Returning" << std::endl);
 	return SPI_ERR_NO_ERROR;
 }
 
