@@ -31,6 +31,9 @@
 #else
 #define DEBUG_LOG(ARG) do { } while(0)
 #endif
+extern "C" {
+#include "discount/markdown.h"
+};
 
 typedef std::pair<std::string, unsigned long> Key;
 typedef std::vector<char> Data;
@@ -134,6 +137,24 @@ INT PASCAL GetPictureInfo(LPSTR buf, LONG len, UINT flag, SPI_PICTINFO *lpInfo)
 INT PASCAL GetPicture(LPSTR buf, LONG len, UINT flag, HANDLE *pHBInfo, HANDLE *pHBm, FARPROC lpPrgressCallback, LONG lData)
 {
 	DEBUG_LOG(<< "GetPicture(" << ((flag & 7) == 0 ? std::string(buf) : std::string(buf, std::min<DWORD>(len, 128))) << ',' << len << ',' << std::hex << std::setw(8) << std::setfill('0') << flag << ')' << std::endl);
+
+	Document *ctx;
+	if((flag & 7) == 0) { // filename
+		FILE *fp = std::fopen(buf, "r");
+		std::fseek(fp, len, SEEK_SET);
+		ctx = mkd_in(fp, 0);
+	} else { // pointer
+		ctx = mkd_string(buf, len, 0);
+	}
+	if(!mkd_compile(ctx, 0)) {
+		DEBUG_LOG(<< "GetPicture(): couldn't compile input");
+		mkd_cleanup(ctx);
+		return SPI_ERR_INTERNAL_ERROR;
+	}
+	char *body;
+	int body_size = mkd_document(ctx, &body);
+	DEBUG_LOG(<< "GetPicture(): " << body);
+	mkd_cleanup(ctx);
 
 	HLOCAL hInfo = LocalAlloc(LMEM_MOVEABLE, sizeof(BITMAPINFOHEADER));
 //	assert(pHBInfo);
