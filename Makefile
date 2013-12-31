@@ -29,9 +29,11 @@ all: $(NAME).spi
 
 $(NAME).o: $(NAME).cpp
 odstream/odstream.o: odstream/odstream.cpp odstream/odstream.hpp
-$(NAME).spi: $(NAME).o $(NAME).ro libodstream.a $(NAME).def
+$(NAME).spi: $(NAME).o $(NAME).ro libodstream.a $(NAME).def discount/libmarkdown.a
 libodstream.a: odstream/odstream.o
 	ar r $@ $^
+discount/libmarkdown.a:
+	(cd discount; env CC=i686-w64-mingw32-gcc ./configure.sh; env LANG=C make)
 
 release-clean:
 	-rm -rf release
