@@ -197,8 +197,11 @@ static void DPtoHIMETRIC(LPSIZEL lpSizel)
 	const int HIMETRIC_INCH = 2540;
 
 	hdc = GetDC(NULL);
-	lpSizel->cx = MulDiv(lpSizel->cx, HIMETRIC_INCH, GetDeviceCaps(hdc, LOGPIXELSX));
-	lpSizel->cy = MulDiv(lpSizel->cy, HIMETRIC_INCH, GetDeviceCaps(hdc, LOGPIXELSY));
+//	NOTE: At least on Windows 8.1, the following code with DPI setting change causes incorrect extent
+//	lpSizel->cx = MulDiv(lpSizel->cx, HIMETRIC_INCH, GetDeviceCaps(hdc, LOGPIXELSX));
+//	lpSizel->cy = MulDiv(lpSizel->cy, HIMETRIC_INCH, GetDeviceCaps(hdc, LOGPIXELSY));
+	lpSizel->cx = MulDiv(lpSizel->cx, HIMETRIC_INCH, 96);
+	lpSizel->cy = MulDiv(lpSizel->cy, HIMETRIC_INCH, 96);
 	ReleaseDC(NULL, hdc);
 }
 
