@@ -461,7 +461,9 @@ extern "C" BOOL APIENTRY DllMain(HANDLE hModule, DWORD ul_reason_for_call, LPVOI
 {
 	switch (ul_reason_for_call) {
 		case DLL_PROCESS_ATTACH:
-			CoInitializeEx(NULL, COINIT_MULTITHREADED);
+// Use single-threaded mode because multithreaded mode seems to cause more hangs
+//			CoInitializeEx(NULL, COINIT_MULTITHREADED);
+			CoInitialize(0);
 			g_hInstance = (HINSTANCE)hModule;
 			SetIniFileName(hModule);
 			LoadFromIni();
