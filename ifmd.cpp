@@ -71,7 +71,7 @@ static std::string g_sExtension;
 
 const char* table[] = {
 	"00IN",
-	"Plugin to render Markdow file - v0.03 (2013/02/05) Written by Yak!",
+	"Plugin to render Markdown file - v0.01 (2014/01/01) Written by Yak!",
 	"*.md;*.mkd;*.mkdn;*.mdown;*.markdown",
 	"Markdownƒtƒ@ƒCƒ‹"
 };
