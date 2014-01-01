@@ -142,7 +142,7 @@ static bool GetHTML(LPSTR buf, LONG len, UINT flag, std::string &sHTML)
 	char *body;
 	int body_size = mkd_document(ctx, &body);
 	DEBUG_LOG(<< "GetHTML(): by discount: " << body << std::endl);
-	sHTML = "<html><head><style type=\"text/css\">body { max-width: 300px; white-space: normal }</style></head><body>";
+	sHTML = "<html><head><style type=\"text/css\">body { overflow: hidden; border: 0 }</style></head><body>";
 	sHTML += body;
 	sHTML += "</body></html>";
 
