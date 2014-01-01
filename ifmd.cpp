@@ -278,6 +278,7 @@ static bool RenderHTML(const std::string& sHTML, HANDLE *pHBInfo, HANDLE *pHBm)
 	SelectObject(hCompDC, hBitmapOld);
 	DeleteObject(hBitmap);
 	DeleteDC(hCompDC);
+	ReleaseDC(0, hDC);
 
 	return true;
 }
