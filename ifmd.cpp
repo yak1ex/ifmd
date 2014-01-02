@@ -88,10 +88,9 @@ INT PASCAL GetPluginInfo(INT infono, LPSTR buf, INT buflen)
 	}
 }
 
-static INT IsSupportedImp(LPSTR filename, LPBYTE pb)
+static bool HasTargetExtension(const std::string &filename, const std::string &extensions)
 {
-	std::string name(filename);
-	const char* start = g_sExtension.c_str();
+	const char* start = extensions.c_str();
 	while(1) {
 		while(*start && *start != '.') {
 			++start;
@@ -102,13 +101,18 @@ static INT IsSupportedImp(LPSTR filename, LPBYTE pb)
 			++end;
 		}
 		std::string ext(start, end);
-		if(name.size() <= ext.size()) continue;
-		if(!lstrcmpi(name.substr(name.size() - ext.size()).c_str(), ext.c_str())) {
-			return SPI_SUPPORT_YES;
+		if(filename.size() <= ext.size()) continue;
+		if(!lstrcmpi(filename.substr(filename.size() - ext.size()).c_str(), ext.c_str())) {
+			return true;
 		}
 		++start;
 	}
-	return SPI_SUPPORT_NO;
+	return false;
+}
+
+static INT IsSupportedImp(LPSTR filename, LPBYTE pb)
+{
+	return HasTargetExtension(std::string(filename), g_sExtension) ? SPI_SUPPORT_YES : SPI_SUPPORT_NO;
 }
 
 INT PASCAL IsSupported(LPSTR filename, DWORD dw)
