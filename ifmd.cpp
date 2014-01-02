@@ -239,7 +239,7 @@ static bool PrepareMarkdown(LPSTR buf, LONG len, UINT flag, IHTMLDocument2Ptr &p
 	char *body;
 	int body_size = mkd_document(ctx, &body);
 //	DEBUG_LOG(<< "GetHTML(): by discount: " << body << std::endl);
-	std::string sHTML = "<html><head><style type=\"text/css\">body { overflow: hidden; border: 0 }</style></head><body>";
+	std::string sHTML = "<html><body>";
 	sHTML += body;
 	sHTML += "</body></html>";
 
@@ -325,6 +325,8 @@ static bool RenderHTML(IHTMLDocument2Ptr &pDoc, HANDLE *pHBInfo, HANDLE *pHBm, F
 {
 	WAIT_STATUS ws = WaitForHTMLDocToLoad(pDoc, lpPrgressCallback, lData);
 	if(ws == WS_CANCELED) return false;
+	dhPutValue(pDoc, L".body.style.borderWidth = %S", L"0");
+	dhPutValue(pDoc, L".body.style.overflow = %S", L"hidden");
 
 // A long HTML may take long time
 //	CDhStringA szHTML;
