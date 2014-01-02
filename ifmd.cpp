@@ -78,7 +78,7 @@ const char* table[] = {
 	"Plugin to render Markdown file - v0.01 (2014/01/01) Written by Yak!",
 	"*.md;*.mkd;*.mkdn;*.mdown;*.markdown",
 	"Markdown file",
-	"*.htm;*.html;*.mht",
+	"*.htm;*.html",
 	"HTML file"
 };
 
@@ -151,7 +151,6 @@ INT PASCAL IsSupported(LPSTR filename, DWORD dw)
 }
 
 const std::string ANCHORS[] = {
-	"\"text/html",
 	"<!doctype html",
 	"<head",
 	"<title",
