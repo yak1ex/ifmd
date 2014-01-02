@@ -236,7 +236,7 @@ static bool PrepareMarkdown(LPSTR buf, LONG len, UINT flag, IHTMLDocument2Ptr &p
 	}
 	char *body;
 	int body_size = mkd_document(ctx, &body);
-	DEBUG_LOG(<< "GetHTML(): by discount: " << body << std::endl);
+//	DEBUG_LOG(<< "GetHTML(): by discount: " << body << std::endl);
 	std::string sHTML = "<html><head><style type=\"text/css\">body { overflow: hidden; border: 0 }</style></head><body>";
 	sHTML += body;
 	sHTML += "</body></html>";
@@ -397,18 +397,20 @@ static bool GetPictureImp(LPSTR buf, LONG len, UINT flag, HANDLE *phBInfo, HANDL
 {
 	IHTMLDocument2Ptr pDoc;
 	if(IsHTML(buf, len, flag)) {
+		DEBUG_LOG(<< "GetPictureImp(): HTML" << std::endl);
 		if(!PrepareHTML(buf, len, flag, pDoc)) {
-			DEBUG_LOG(<< "GetPictureImp(): couldn't prepare HTML");
+			DEBUG_LOG(<< "GetPictureImp(): couldn't prepare HTML" << std::endl);
 			return false;
 		}
 	} else {
+		DEBUG_LOG(<< "GetPictureImp(): Markdown" << std::endl);
 		if(!PrepareMarkdown(buf, len, flag, pDoc)) {
-			DEBUG_LOG(<< "GetPictureImp(): couldn't prepare markdown");
+			DEBUG_LOG(<< "GetPictureImp(): couldn't prepare markdown" << std::endl);
 			return false;
 		}
 	}
 	if(!RenderHTML(pDoc, phBInfo, phBm, lpPrgressCallback, lData)) {
-		DEBUG_LOG(<< "GetPictureImp(): couldn't render HTML");
+		DEBUG_LOG(<< "GetPictureImp(): couldn't render HTML" << std::endl);
 		return false;
 	}
 	return true;
@@ -426,7 +428,7 @@ INT PASCAL GetPictureInfo(LPSTR buf, LONG len, UINT flag, SPI_PICTINFO *lpInfo)
 
 	HANDLE hBInfo, hBm;
 	if(!GetPictureImp(buf, len, flag, &hBInfo, &hBm, 0, 0)) {
-		DEBUG_LOG(<< "GetPictureInfo(): couldn't get converted image");
+		DEBUG_LOG(<< "GetPictureInfo(): couldn't get converted image" << std::endl);
 		return SPI_ERR_INTERNAL_ERROR;
 	}
 
@@ -452,7 +454,7 @@ INT PASCAL GetPicture(LPSTR buf, LONG len, UINT flag, HANDLE *pHBInfo, HANDLE *p
 	DEBUG_LOG(<< "GetPicture(" << ((flag & 7) == 0 ? std::string(buf) : std::string(buf, std::min<DWORD>(len, 128))) << ',' << len << ',' << std::hex << std::setw(8) << std::setfill('0') << flag << ')' << std::endl);
 
 	if(!GetPictureImp(buf, len, flag, pHBInfo, pHBm, lpPrgressCallback, lData)) {
-		DEBUG_LOG(<< "GetPicture(): couldn't get converted image");
+		DEBUG_LOG(<< "GetPicture(): couldn't get converted image" << std::endl);
 		return SPI_ERR_INTERNAL_ERROR;
 	}
 
