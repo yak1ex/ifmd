@@ -263,9 +263,12 @@ static bool PrepareHTML(LPSTR buf, LONG len, UINT flag, IHTMLDocument2Ptr &pDoc)
  *   You may wish to implement a timeout.
  *
  ============================================================================ */
-HRESULT WaitForHTMLDocToLoad(IDispatch * pDoc)
+enum WAIT_STATUS { WS_COMPLETE, WS_CANCELED, WS_ERROR };
+WAIT_STATUS WaitForHTMLDocToLoad(IDispatch * pDoc, FARPROC lpPrgressCallback, LONG lData)
 {
 	HRESULT hr;
+	bool canceled = false;
+	int PASCAL (*ProgressCallback)(int nNum, int nDenom, long lData) = reinterpret_cast<int PASCAL(*)(int, int, long)>(lpPrgressCallback);
 
 	while (TRUE)
 	{
@@ -288,10 +291,16 @@ HRESULT WaitForHTMLDocToLoad(IDispatch * pDoc)
 				DispatchMessage(&msg);
 			}
 		}
+		if(lpPrgressCallback) {
+			ProgressCallback(0, 1, lData);
+		}
 		DEBUG_LOG(<< "WaitForHTMLDocToLoad(): waiting..." << std::endl);
 	}
+	if(SUCCEEDED(hr) && !canceled && lpPrgressCallback) {
+		ProgressCallback(1, 1, lData);
+	}
 
-	return hr;
+	return FAILED(hr) ? WS_ERROR : canceled ? WS_CANCELED : WS_COMPLETE;
 }
 
 // ref. http://eternalwindows.jp/ole/oledraw/oledraw01.html
@@ -310,9 +319,10 @@ static void DPtoHIMETRIC(LPSIZEL lpSizel)
 	ReleaseDC(NULL, hdc);
 }
 
-static bool RenderHTML(IHTMLDocument2Ptr &pDoc, HANDLE *pHBInfo, HANDLE *pHBm)
+static bool RenderHTML(IHTMLDocument2Ptr &pDoc, HANDLE *pHBInfo, HANDLE *pHBm, FARPROC lpPrgressCallback, LONG lData)
 {
-	WaitForHTMLDocToLoad(pDoc);
+	WAIT_STATUS ws = WaitForHTMLDocToLoad(pDoc, lpPrgressCallback, lData);
+	if(ws == WS_CANCELED) return false;
 
 // A long HTML may take long time
 //	CDhStringA szHTML;
@@ -383,7 +393,7 @@ static bool RenderHTML(IHTMLDocument2Ptr &pDoc, HANDLE *pHBInfo, HANDLE *pHBm)
 	return true;
 }
 
-static bool GetPictureImp(LPSTR buf, LONG len, UINT flag, HANDLE *phBInfo, HANDLE *phBm)
+static bool GetPictureImp(LPSTR buf, LONG len, UINT flag, HANDLE *phBInfo, HANDLE *phBm, FARPROC lpPrgressCallback, LONG lData)
 {
 	IHTMLDocument2Ptr pDoc;
 	if(IsHTML(buf, len, flag)) {
@@ -397,7 +407,7 @@ static bool GetPictureImp(LPSTR buf, LONG len, UINT flag, HANDLE *phBInfo, HANDL
 			return false;
 		}
 	}
-	if(!RenderHTML(pDoc, phBInfo, phBm)) {
+	if(!RenderHTML(pDoc, phBInfo, phBm, lpPrgressCallback, lData)) {
 		DEBUG_LOG(<< "GetPictureImp(): couldn't render HTML");
 		return false;
 	}
@@ -415,7 +425,7 @@ INT PASCAL GetPictureInfo(LPSTR buf, LONG len, UINT flag, SPI_PICTINFO *lpInfo)
 	DEBUG_LOG(<< "GetPictureInfo(" << ((flag & 7) == 0 ? std::string(buf) : std::string(buf, std::min<DWORD>(len, 128))) << ',' << len << ',' << std::hex << std::setw(8) << std::setfill('0') << flag << ',' << lpInfo << ')' << std::endl);
 
 	HANDLE hBInfo, hBm;
-	if(!GetPictureImp(buf, len, flag, &hBInfo, &hBm)) {
+	if(!GetPictureImp(buf, len, flag, &hBInfo, &hBm, 0, 0)) {
 		DEBUG_LOG(<< "GetPictureInfo(): couldn't get converted image");
 		return SPI_ERR_INTERNAL_ERROR;
 	}
@@ -441,7 +451,7 @@ INT PASCAL GetPicture(LPSTR buf, LONG len, UINT flag, HANDLE *pHBInfo, HANDLE *p
 {
 	DEBUG_LOG(<< "GetPicture(" << ((flag & 7) == 0 ? std::string(buf) : std::string(buf, std::min<DWORD>(len, 128))) << ',' << len << ',' << std::hex << std::setw(8) << std::setfill('0') << flag << ')' << std::endl);
 
-	if(!GetPictureImp(buf, len, flag, pHBInfo, pHBm)) {
+	if(!GetPictureImp(buf, len, flag, pHBInfo, pHBm, lpPrgressCallback, lData)) {
 		DEBUG_LOG(<< "GetPicture(): couldn't get converted image");
 		return SPI_ERR_INTERNAL_ERROR;
 	}
