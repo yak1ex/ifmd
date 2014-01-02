@@ -15,7 +15,7 @@
 
 #include <string>
 #include <vector>
-#include <map>
+#include <algorithm>
 #include <cstdlib>
 #include <cstdio>
 
@@ -56,6 +56,7 @@ _COM_SMARTPTR_TYPEDEF(IHTMLElement2,__uuidof(IHTMLElement2));
 _COM_SMARTPTR_TYPEDEF(IOleObject,__uuidof(IOleObject));
 _COM_SMARTPTR_TYPEDEF(IStream,__uuidof(IStream));
 _COM_SMARTPTR_TYPEDEF(IPersistStreamInit,__uuidof(IPersistStreamInit));
+_COM_SMARTPTR_TYPEDEF(IPersistFile,__uuidof(IPersistFile));
 
 // Force null terminating version of strncpy
 // Return length without null terminator
@@ -69,20 +70,30 @@ int safe_strncpy(char *dest, const char *src, std::size_t n)
 
 static HINSTANCE g_hInstance;
 
-static std::string g_sExtension;
+static std::string g_sMarkdownExtension;
+static std::string g_sHtmlExtension;
 
 const char* table[] = {
 	"00IN",
 	"Plugin to render Markdown file - v0.01 (2014/01/01) Written by Yak!",
 	"*.md;*.mkd;*.mkdn;*.mdown;*.markdown",
-	"Markdownファイル"
+	"Markdown file",
+	"*.htm;*.html;*.mht",
+	"HTML file"
 };
 
 INT PASCAL GetPluginInfo(INT infono, LPSTR buf, INT buflen)
 {
 	DEBUG_LOG(<< "GetPluginInfo(" << infono << ',' << buf << ',' << buflen << ')' << std::endl);
 	if(0 <= infono && static_cast<size_t>(infono) < sizeof(table)/sizeof(table[0])) {
-		return safe_strncpy(buf, infono == 2 ? g_sExtension.c_str() : table[infono], buflen);
+		switch(infono) {
+		case 2:
+			return safe_strncpy(buf, g_sMarkdownExtension.c_str(), buflen);
+		case 4:
+			return safe_strncpy(buf, g_sHtmlExtension.c_str(), buflen);
+		default:
+			return safe_strncpy(buf, table[infono], buflen);
+		}
 	} else {
 		return 0;
 	}
@@ -112,7 +123,10 @@ static bool HasTargetExtension(const std::string &filename, const std::string &e
 
 static INT IsSupportedImp(LPSTR filename, LPBYTE pb)
 {
-	return HasTargetExtension(std::string(filename), g_sExtension) ? SPI_SUPPORT_YES : SPI_SUPPORT_NO;
+	return
+		(HasTargetExtension(std::string(filename), g_sMarkdownExtension)
+			|| HasTargetExtension(std::string(filename), g_sHtmlExtension)
+		) ? SPI_SUPPORT_YES : SPI_SUPPORT_NO;
 }
 
 INT PASCAL IsSupported(LPSTR filename, DWORD dw)
@@ -136,7 +150,78 @@ INT PASCAL IsSupported(LPSTR filename, DWORD dw)
 	// not reached here
 }
 
-static bool GetHTML(LPSTR buf, LONG len, UINT flag, std::string &sHTML)
+const std::string ANCHORS[] = {
+	"\"text/html",
+	"<!doctype html",
+	"<head",
+	"<title",
+	"<html",
+	"<script",
+	"<style",
+	"<table",
+	"<a href="
+};
+
+static bool IsHTML(LPSTR buf, LONG len, UINT flag)
+{
+	if((flag & 7) == 0) { // filename
+		return HasTargetExtension(std::string(buf), g_sHtmlExtension);
+	} else { // pointer
+		std::vector<char> target(buf, buf + std::min<std::size_t>(len, 4096));
+		target.push_back(0); // null terminate
+		CharLowerBuff(&target[0], target.size());
+		for(std::size_t i = 0; i < sizeof(ANCHORS) / sizeof(ANCHORS[0]); ++i) {
+			if(std::search(target.begin(), target.end(), ANCHORS[i].begin(), ANCHORS[i].end()) != target.end()) return true;
+		}
+		return false;
+	}
+}
+
+static bool InitFromMemory(IHTMLDocument2Ptr &pDoc, const char* buf, std::size_t size)
+{
+	HRESULT hr = pDoc.CreateInstance(CLSID_HTMLDocument, 0, CLSCTX_INPROC_SERVER);
+	if(FAILED(hr)) {
+		DEBUG_LOG(<< "InitFromMemory(): Creating HTMLDocument failed." << std::endl);
+		return false;
+	}
+	HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, size);
+	CopyMemory(GlobalLock(hMem), buf, size);
+	GlobalUnlock(hMem);
+	IStreamPtr pStream;
+	CreateStreamOnHGlobal(hMem, TRUE, &pStream);
+	IPersistStreamInitPtr pStreamInit;
+	pDoc->QueryInterface(IID_PPV_ARGS(&pStreamInit));
+	pStreamInit->InitNew();
+	hr = pStreamInit->Load(pStream);
+	if(FAILED(hr)) {
+		DEBUG_LOG(<< "InitFromMemory(): Loading from memory failed." << std::endl);
+		return false;
+	}
+	return true;
+}
+
+static bool InitFromFile(IHTMLDocument2Ptr &pDoc, const char* filename)
+{
+	HRESULT hr = pDoc.CreateInstance(CLSID_HTMLDocument, 0, CLSCTX_INPROC_SERVER);
+	if(FAILED(hr)) {
+		DEBUG_LOG(<< "InitFromFile(): Creating HTMLDocument failed." << std::endl);
+		return false;
+	}
+	DWORD len = MultiByteToWideChar(CP_ACP, 0, filename, -1, 0, 0);
+	std::vector<WCHAR> ws(len);
+	MultiByteToWideChar(CP_ACP, 0, filename, -1, &ws[0], ws.size());
+
+	IPersistFilePtr pFile;
+	pDoc->QueryInterface(IID_PPV_ARGS(&pFile));
+	hr = pFile->Load(&ws[0], STGM_READ);
+	if(FAILED(hr)) {
+		DEBUG_LOG(<< "InitFromFile(): Loading from file failed." << std::endl);
+		return false;
+	}
+	return true;
+}
+
+static bool PrepareMarkdown(LPSTR buf, LONG len, UINT flag, IHTMLDocument2Ptr &pDoc)
 {
 	Document *ctx;
 	if((flag & 7) == 0) { // filename
@@ -153,12 +238,22 @@ static bool GetHTML(LPSTR buf, LONG len, UINT flag, std::string &sHTML)
 	char *body;
 	int body_size = mkd_document(ctx, &body);
 	DEBUG_LOG(<< "GetHTML(): by discount: " << body << std::endl);
-	sHTML = "<html><head><style type=\"text/css\">body { overflow: hidden; border: 0 }</style></head><body>";
+	std::string sHTML = "<html><head><style type=\"text/css\">body { overflow: hidden; border: 0 }</style></head><body>";
 	sHTML += body;
 	sHTML += "</body></html>";
 
 	mkd_cleanup(ctx);
-	return true;
+
+	return InitFromMemory(pDoc, sHTML.c_str(), sHTML.size() + 1);
+}
+
+static bool PrepareHTML(LPSTR buf, LONG len, UINT flag, IHTMLDocument2Ptr &pDoc)
+{
+	if((flag & 7) == 0) { // filename
+		return InitFromFile(pDoc, buf);
+	} else { // pointer
+		return InitFromMemory(pDoc, buf, len);
+	}
 }
 
 // Extracted from DispHelper 0.81 samples_cpp/mshtml.cpp
@@ -216,30 +311,14 @@ static void DPtoHIMETRIC(LPSIZEL lpSizel)
 	ReleaseDC(NULL, hdc);
 }
 
-static bool RenderHTML(const std::string& sHTML, HANDLE *pHBInfo, HANDLE *pHBm)
+static bool RenderHTML(IHTMLDocument2Ptr &pDoc, HANDLE *pHBInfo, HANDLE *pHBm)
 {
-	IHTMLDocument2Ptr pDoc;
-	HRESULT hrCreate = pDoc.CreateInstance(CLSID_HTMLDocument, 0, CLSCTX_INPROC_SERVER);
-	if(FAILED(hrCreate)) {
-		DEBUG_LOG(<< "RenderHTML(): Creating HTMLDocument failed." << std::endl);
-	}
-	{
-		HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, sHTML.size() + 1);
-		CopyMemory(GlobalLock(hMem), sHTML.c_str(), sHTML.size() + 1);
-		GlobalUnlock(hMem);
-		IStreamPtr pStream;
-		CreateStreamOnHGlobal(hMem, TRUE, &pStream);
-		IPersistStreamInitPtr pStreamInit;
-		pDoc->QueryInterface(IID_PPV_ARGS(&pStreamInit));
-		pStreamInit->InitNew();
-		pStreamInit->Load(pStream);
-	}
-
 	WaitForHTMLDocToLoad(pDoc);
 
-	CDhStringA szHTML;
-	dhGetValue(L"%s", &szHTML, pDoc, L".documentElement.outerHTML");
-	DEBUG_LOG(<< "RenderHTML(): " << szHTML << std::endl);
+// A long HTML may take long time
+//	CDhStringA szHTML;
+//	dhGetValue(L"%s", &szHTML, pDoc, L".documentElement.outerHTML");
+//	DEBUG_LOG(<< "RenderHTML(): " << szHTML << std::endl);
 
 	RECT imageRect = {0, 0, 640, 480};
 	HDC hDC = GetDC(0);
@@ -305,6 +384,27 @@ static bool RenderHTML(const std::string& sHTML, HANDLE *pHBInfo, HANDLE *pHBm)
 	return true;
 }
 
+static bool GetPictureImp(LPSTR buf, LONG len, UINT flag, HANDLE *phBInfo, HANDLE *phBm)
+{
+	IHTMLDocument2Ptr pDoc;
+	if(IsHTML(buf, len, flag)) {
+		if(!PrepareHTML(buf, len, flag, pDoc)) {
+			DEBUG_LOG(<< "GetPictureImp(): couldn't prepare HTML");
+			return false;
+		}
+	} else {
+		if(!PrepareMarkdown(buf, len, flag, pDoc)) {
+			DEBUG_LOG(<< "GetPictureImp(): couldn't prepare markdown");
+			return false;
+		}
+	}
+	if(!RenderHTML(pDoc, phBInfo, phBm)) {
+		DEBUG_LOG(<< "GetPictureImp(): couldn't render HTML");
+		return false;
+	}
+	return true;
+}
+
 INT PASCAL GetPictureInfo(LPSTR buf, LONG len, UINT flag, SPI_PICTINFO *lpInfo)
 {
 	// if ((flag & 7) == 0)
@@ -315,14 +415,9 @@ INT PASCAL GetPictureInfo(LPSTR buf, LONG len, UINT flag, SPI_PICTINFO *lpInfo)
 	//     len -> size
 	DEBUG_LOG(<< "GetPictureInfo(" << ((flag & 7) == 0 ? std::string(buf) : std::string(buf, std::min<DWORD>(len, 128))) << ',' << len << ',' << std::hex << std::setw(8) << std::setfill('0') << flag << ',' << lpInfo << ')' << std::endl);
 
-	std::string sHTML;
-	if(!GetHTML(buf, len, flag, sHTML)) {
-		DEBUG_LOG(<< "GetPicture(): couldn't compile input");
-		return SPI_ERR_INTERNAL_ERROR;
-	}
 	HANDLE hBInfo, hBm;
-	if(!RenderHTML(sHTML, &hBInfo, &hBm)) {
-		DEBUG_LOG(<< "GetPicture(): couldn't render HTML");
+	if(!GetPictureImp(buf, len, flag, &hBInfo, &hBm)) {
+		DEBUG_LOG(<< "GetPictureInfo(): couldn't get converted image");
 		return SPI_ERR_INTERNAL_ERROR;
 	}
 
@@ -347,13 +442,8 @@ INT PASCAL GetPicture(LPSTR buf, LONG len, UINT flag, HANDLE *pHBInfo, HANDLE *p
 {
 	DEBUG_LOG(<< "GetPicture(" << ((flag & 7) == 0 ? std::string(buf) : std::string(buf, std::min<DWORD>(len, 128))) << ',' << len << ',' << std::hex << std::setw(8) << std::setfill('0') << flag << ')' << std::endl);
 
-	std::string sHTML;
-	if(!GetHTML(buf, len, flag, sHTML)) {
-		DEBUG_LOG(<< "GetPicture(): couldn't compile input");
-		return SPI_ERR_INTERNAL_ERROR;
-	}
-	if(!RenderHTML(sHTML, pHBInfo, pHBm)) {
-		DEBUG_LOG(<< "GetPicture(): couldn't render HTML");
+	if(!GetPictureImp(buf, len, flag, pHBInfo, pHBm)) {
+		DEBUG_LOG(<< "GetPicture(): couldn't get converted image");
 		return SPI_ERR_INTERNAL_ERROR;
 	}
 
@@ -363,7 +453,7 @@ INT PASCAL GetPicture(LPSTR buf, LONG len, UINT flag, HANDLE *pHBInfo, HANDLE *p
 
 INT PASCAL GetPreview(LPSTR buf, LONG len, UINT flag, HANDLE *pHBInfo, HANDLE *pHBm, FARPROC lpPrgressCallback, LONG lData)
 {
-	DEBUG_LOG(<< "GetPreview(" << std::string(buf, std::min<DWORD>(len, 1024)) << ',' << len << ',' << std::hex << std::setw(8) << std::setfill('0') << flag << ')' << std::endl);
+	DEBUG_LOG(<< "GetPreview(" << ((flag & 7) == 0 ? std::string(buf) : std::string(buf, std::min<DWORD>(len, 128))) << ',' << len << ',' << std::hex << std::setw(8) << std::setfill('0') << flag << ')' << std::endl);
 	return SPI_ERR_NOT_IMPLEMENTED;
 }
 
@@ -391,20 +481,27 @@ static LRESULT CALLBACK AboutDlgProc(HWND hDlgWnd, UINT msg, WPARAM wp, LPARAM l
 
 static std::string g_sIniFileName; // ini ファイル名
 static const char SECTION[] = "ifmd";
+static const char MD_EXTENSION_KEY[] = "extension";
+static const char HTML_EXTENSION_KEY[] = "html_extension";
 
 void LoadFromIni()
 {
 	std::vector<char> vBuf(1024);
 	DWORD dwSize;
 	for(dwSize = vBuf.size() - 1; dwSize == vBuf.size() - 1; vBuf.resize(vBuf.size() * 2)) {
-		dwSize = GetPrivateProfileString(SECTION, "extension", table[2], &vBuf[0], vBuf.size(), g_sIniFileName.c_str());
+		dwSize = GetPrivateProfileString(SECTION, MD_EXTENSION_KEY, table[2], &vBuf[0], vBuf.size(), g_sIniFileName.c_str());
 	}
-	g_sExtension = std::string(&vBuf[0]);
+	g_sMarkdownExtension = std::string(&vBuf[0]);
+	for(dwSize = vBuf.size() - 1; dwSize == vBuf.size() - 1; vBuf.resize(vBuf.size() * 2)) {
+		dwSize = GetPrivateProfileString(SECTION, HTML_EXTENSION_KEY, table[4], &vBuf[0], vBuf.size(), g_sIniFileName.c_str());
+	}
+	g_sHtmlExtension = std::string(&vBuf[0]);
 }
 
 void SaveToIni()
 {
-	WritePrivateProfileString(SECTION, "extension", g_sExtension.c_str(), g_sIniFileName.c_str());
+	WritePrivateProfileString(SECTION, MD_EXTENSION_KEY, g_sMarkdownExtension.c_str(), g_sIniFileName.c_str());
+	WritePrivateProfileString(SECTION, HTML_EXTENSION_KEY, g_sHtmlExtension.c_str(), g_sIniFileName.c_str());
 }
 
 void SetIniFileName(HANDLE hModule)
@@ -423,7 +520,8 @@ void SetIniFileName(HANDLE hModule)
 
 void UpdateDialogItem(HWND hDlgWnd)
 {
-	SendDlgItemMessage(hDlgWnd, IDC_EDIT_EXTENSION, WM_SETTEXT, 0, reinterpret_cast<LPARAM>(g_sExtension.c_str()));
+	SendDlgItemMessage(hDlgWnd, IDC_EDIT_EXTENSION, WM_SETTEXT, 0, reinterpret_cast<LPARAM>(g_sMarkdownExtension.c_str()));
+	SendDlgItemMessage(hDlgWnd, IDC_EDIT_HTML_EXTENSION, WM_SETTEXT, 0, reinterpret_cast<LPARAM>(g_sHtmlExtension.c_str()));
 }
 
 bool UpdateValue(HWND hDlgWnd)
@@ -431,7 +529,12 @@ bool UpdateValue(HWND hDlgWnd)
 	LRESULT lLen = SendDlgItemMessage(hDlgWnd, IDC_EDIT_EXTENSION, WM_GETTEXTLENGTH, 0, 0);
 	std::vector<char> vBuf(lLen+1);
 	SendDlgItemMessage(hDlgWnd, IDC_EDIT_EXTENSION, WM_GETTEXT, lLen+1, reinterpret_cast<LPARAM>(&vBuf[0]));
-	g_sExtension = std::string(&vBuf[0]);
+	g_sMarkdownExtension = std::string(&vBuf[0]);
+
+	lLen = SendDlgItemMessage(hDlgWnd, IDC_EDIT_HTML_EXTENSION, WM_GETTEXTLENGTH, 0, 0);
+	vBuf.resize(lLen+1);
+	SendDlgItemMessage(hDlgWnd, IDC_EDIT_HTML_EXTENSION, WM_GETTEXT, lLen+1, reinterpret_cast<LPARAM>(&vBuf[0]));
+	g_sHtmlExtension = std::string(&vBuf[0]);
 
 	return true; // TODO: Always update
 }
@@ -455,6 +558,7 @@ static LRESULT CALLBACK ConfigDlgProc(HWND hDlgWnd, UINT msg, WPARAM wp, LPARAM 
 					break;
 				case IDC_SET_DEFAULT:
 					SendDlgItemMessage(hDlgWnd, IDC_EDIT_EXTENSION, WM_SETTEXT, 0, reinterpret_cast<LPARAM>(table[2]));
+					SendDlgItemMessage(hDlgWnd, IDC_EDIT_HTML_EXTENSION, WM_SETTEXT, 0, reinterpret_cast<LPARAM>(table[4]));
 					break;
 				default:
 					return FALSE;

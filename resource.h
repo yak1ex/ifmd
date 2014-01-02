@@ -20,7 +20,8 @@
 #define IDV_VERSIONINFO                         1
 #define IDD_ABOUT_DIALOG                        101
 #define IDD_CONFIG_DIALOG                       102
-#define IDC_EDIT_EXTENSION                      1010
-#define IDC_SET_DEFAULT                         1011
+#define IDC_EDIT_EXTENSION                      1001
+#define IDC_EDIT_HTML_EXTENSION                 1002
+#define IDC_SET_DEFAULT                         1003
 
 #endif
