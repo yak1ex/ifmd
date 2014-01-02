@@ -54,6 +54,8 @@ _COM_SMARTPTR_TYPEDEF(IHTMLDocument2,__uuidof(IHTMLDocument2));
 _COM_SMARTPTR_TYPEDEF(IHTMLElement,__uuidof(IHTMLElement));
 _COM_SMARTPTR_TYPEDEF(IHTMLElement2,__uuidof(IHTMLElement2));
 _COM_SMARTPTR_TYPEDEF(IOleObject,__uuidof(IOleObject));
+_COM_SMARTPTR_TYPEDEF(IStream,__uuidof(IStream));
+_COM_SMARTPTR_TYPEDEF(IPersistStreamInit,__uuidof(IPersistStreamInit));
 
 // Force null terminating version of strncpy
 // Return length without null terminator
@@ -212,9 +214,17 @@ static bool RenderHTML(const std::string& sHTML, HANDLE *pHBInfo, HANDLE *pHBm)
 	if(FAILED(hrCreate)) {
 		DEBUG_LOG(<< "RenderHTML(): Creating HTMLDocument failed." << std::endl);
 	}
-	dhCallMethod(pDoc, L".Writeln(%s)", sHTML.c_str());
-	dhCallMethod(pDoc, L".Write");
-	dhCallMethod(pDoc, L".Close");
+	{
+		HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, sHTML.size() + 1);
+		CopyMemory(GlobalLock(hMem), sHTML.c_str(), sHTML.size() + 1);
+		GlobalUnlock(hMem);
+		IStreamPtr pStream;
+		CreateStreamOnHGlobal(hMem, TRUE, &pStream);
+		IPersistStreamInitPtr pStreamInit;
+		pDoc->QueryInterface(IID_PPV_ARGS(&pStreamInit));
+		pStreamInit->InitNew();
+		pStreamInit->Load(pStream);
+	}
 
 	WaitForHTMLDocToLoad(pDoc);
 
