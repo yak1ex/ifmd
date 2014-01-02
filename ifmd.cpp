@@ -117,6 +117,11 @@ static INT IsSupportedImp(LPSTR filename, LPBYTE pb)
 
 INT PASCAL IsSupported(LPSTR filename, DWORD dw)
 {
+	// buf -> filename
+	// if (HIWORD(dw))
+	//     dw -> pointer to a buffer more than or equal to 2KB
+	// else
+	//     dw -> filehandle
 	DEBUG_LOG(<< "IsSupported(" << filename << ',' << std::hex << std::setw(8) << std::setfill('0') << dw << ')' << std::endl);
 	if(HIWORD(dw) == 0) {
 		DEBUG_LOG(<< "File handle" << std::endl);
