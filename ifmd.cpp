@@ -72,6 +72,8 @@ static HINSTANCE g_hInstance;
 
 static std::string g_sMarkdownExtension;
 static std::string g_sHtmlExtension;
+static int g_nInitialW;
+static int g_nInitialH;
 
 const char* table[] = {
 	"00IN",
@@ -329,7 +331,7 @@ static bool RenderHTML(IHTMLDocument2Ptr &pDoc, HANDLE *pHBInfo, HANDLE *pHBm, F
 //	dhGetValue(L"%s", &szHTML, pDoc, L".documentElement.outerHTML");
 //	DEBUG_LOG(<< "RenderHTML(): " << szHTML << std::endl);
 
-	RECT imageRect = {0, 0, 640, 480};
+	RECT imageRect = {0, 0, g_nInitialW, g_nInitialH };
 	HDC hDC = GetDC(0);
 	HDC hCompDC = CreateCompatibleDC(hDC);
 	HBITMAP hBitmap0 = CreateCompatibleBitmap(hDC, imageRect.right, imageRect.bottom);
@@ -494,9 +496,13 @@ static std::string g_sIniFileName; // ini ƒtƒ@ƒCƒ‹–¼
 static const char SECTION[] = "ifmd";
 static const char MD_EXTENSION_KEY[] = "extension";
 static const char HTML_EXTENSION_KEY[] = "html_extension";
+static const char INITIAL_W_KEY[] = "initial_width";
+static const char INITIAL_H_KEY[] = "initial_height";
 
 void LoadFromIni()
 {
+	g_nInitialW = GetPrivateProfileInt(SECTION, INITIAL_W_KEY, 800, g_sIniFileName.c_str());
+	g_nInitialH = GetPrivateProfileInt(SECTION, INITIAL_H_KEY, 600, g_sIniFileName.c_str());
 	std::vector<char> vBuf(1024);
 	DWORD dwSize;
 	for(dwSize = vBuf.size() - 1; dwSize == vBuf.size() - 1; vBuf.resize(vBuf.size() * 2)) {
@@ -511,6 +517,11 @@ void LoadFromIni()
 
 void SaveToIni()
 {
+	char buf[1024];
+	wsprintf(buf, "%d", g_nInitialW);
+	WritePrivateProfileString(SECTION, INITIAL_W_KEY, buf, g_sIniFileName.c_str());
+	wsprintf(buf, "%d", g_nInitialH);
+	WritePrivateProfileString(SECTION, INITIAL_H_KEY, buf, g_sIniFileName.c_str());
 	WritePrivateProfileString(SECTION, MD_EXTENSION_KEY, g_sMarkdownExtension.c_str(), g_sIniFileName.c_str());
 	WritePrivateProfileString(SECTION, HTML_EXTENSION_KEY, g_sHtmlExtension.c_str(), g_sIniFileName.c_str());
 }
@@ -531,14 +542,29 @@ void SetIniFileName(HANDLE hModule)
 
 void UpdateDialogItem(HWND hDlgWnd)
 {
+	char buf[1024];
+	wsprintf(buf, "%d", g_nInitialW);
+	SendDlgItemMessage(hDlgWnd, IDC_EDIT_INITIAL_W, WM_SETTEXT, 0, reinterpret_cast<LPARAM>(buf));
+	wsprintf(buf, "%d", g_nInitialH);
+	SendDlgItemMessage(hDlgWnd, IDC_EDIT_INITIAL_H, WM_SETTEXT, 0, reinterpret_cast<LPARAM>(buf));
 	SendDlgItemMessage(hDlgWnd, IDC_EDIT_EXTENSION, WM_SETTEXT, 0, reinterpret_cast<LPARAM>(g_sMarkdownExtension.c_str()));
 	SendDlgItemMessage(hDlgWnd, IDC_EDIT_HTML_EXTENSION, WM_SETTEXT, 0, reinterpret_cast<LPARAM>(g_sHtmlExtension.c_str()));
 }
 
 bool UpdateValue(HWND hDlgWnd)
 {
-	LRESULT lLen = SendDlgItemMessage(hDlgWnd, IDC_EDIT_EXTENSION, WM_GETTEXTLENGTH, 0, 0);
+	LRESULT lLen = SendDlgItemMessage(hDlgWnd, IDC_EDIT_INITIAL_W, WM_GETTEXTLENGTH, 0, 0);
 	std::vector<char> vBuf(lLen+1);
+	SendDlgItemMessage(hDlgWnd, IDC_EDIT_INITIAL_W, WM_GETTEXT, lLen+1, reinterpret_cast<LPARAM>(&vBuf[0]));
+	g_nInitialW = std::atoi(&vBuf[0]);
+
+	lLen = SendDlgItemMessage(hDlgWnd, IDC_EDIT_INITIAL_H, WM_GETTEXTLENGTH, 0, 0);
+	vBuf.resize(lLen+1);
+	SendDlgItemMessage(hDlgWnd, IDC_EDIT_INITIAL_H, WM_GETTEXT, lLen+1, reinterpret_cast<LPARAM>(&vBuf[0]));
+	g_nInitialH = std::atoi(&vBuf[0]);
+
+	lLen = SendDlgItemMessage(hDlgWnd, IDC_EDIT_EXTENSION, WM_GETTEXTLENGTH, 0, 0);
+	vBuf.resize(lLen+1);
 	SendDlgItemMessage(hDlgWnd, IDC_EDIT_EXTENSION, WM_GETTEXT, lLen+1, reinterpret_cast<LPARAM>(&vBuf[0]));
 	g_sMarkdownExtension = std::string(&vBuf[0]);
 

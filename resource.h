@@ -23,5 +23,8 @@
 #define IDC_EDIT_EXTENSION                      1001
 #define IDC_EDIT_HTML_EXTENSION                 1002
 #define IDC_SET_DEFAULT                         1003
+#define IDC_SET_DEFAULT_SIZE                    1004
+#define IDC_EDIT_INITIAL_W                      1005
+#define IDC_EDIT_INITIAL_H                      1006
 
 #endif

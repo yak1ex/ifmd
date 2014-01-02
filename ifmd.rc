@@ -38,18 +38,25 @@ END
 
 
 
-IDD_CONFIG_DIALOG DIALOGEX 0, 0, 198, 89
+IDD_CONFIG_DIALOG DIALOGEX 0, 0, 198, 126
 STYLE DS_MODALFRAME | DS_SHELLFONT | WS_CAPTION | WS_POPUP | WS_SYSMENU
 CAPTION "ifmd.spi config"
 FONT 8, "MS Shell Dlg", 400, 0, 1
 BEGIN
-    LTEXT           "Markdown extension(&E)", -1, 9, 5, 79, 8, SS_LEFT
-    EDITTEXT        IDC_EDIT_EXTENSION, 9, 16, 132, 14, ES_AUTOHSCROLL
-    LTEXT           "HTML extension(&H)", -1, 9, 34, 67, 8, SS_LEFT
-    EDITTEXT        IDC_EDIT_HTML_EXTENSION, 9, 45, 132, 14, ES_AUTOHSCROLL
-    PUSHBUTTON      "Default(&D)", IDC_SET_DEFAULT, 145, 29, 49, 14
-    DEFPUSHBUTTON   "&OK", IDOK, 41, 68, 43, 14
-    PUSHBUTTON      "&Cancel", IDCANCEL, 106, 68, 40, 14
+    LTEXT           "Initial size(&I)", -1, 9, 4, 44, 8, SS_LEFT
+    LTEXT           "W:", -1, 13, 20, 10, 8, SS_LEFT
+    EDITTEXT        IDC_EDIT_INITIAL_W, 26, 19, 39, 14, WS_GROUP | ES_AUTOHSCROLL
+    LTEXT           "x", -1, 73, 21, 4, 8, SS_LEFT
+    LTEXT           "H:", -1, 84, 21, 10, 8, SS_LEFT
+    EDITTEXT        IDC_EDIT_INITIAL_H, 95, 19, 40, 14, ES_AUTOHSCROLL
+    PUSHBUTTON      "Default(&F)", IDC_SET_DEFAULT_SIZE, 145, 19, 50, 14
+    LTEXT           "Markdown extension(&E)", -1, 9, 40, 79, 8, SS_LEFT
+    EDITTEXT        IDC_EDIT_EXTENSION, 9, 51, 132, 14, WS_GROUP | ES_AUTOHSCROLL
+    LTEXT           "HTML extension(&H)", -1, 9, 69, 67, 8, SS_LEFT
+    EDITTEXT        IDC_EDIT_HTML_EXTENSION, 9, 80, 132, 14, ES_AUTOHSCROLL
+    PUSHBUTTON      "Default(&D)", IDC_SET_DEFAULT, 145, 66, 50, 14
+    DEFPUSHBUTTON   "&OK", IDOK, 41, 103, 43, 14, WS_GROUP
+    PUSHBUTTON      "&Cancel", IDCANCEL, 106, 103, 40, 14
 END
 
 
