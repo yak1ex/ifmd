@@ -77,7 +77,7 @@ static int g_nInitialH;
 
 const char* table[] = {
 	"00IN",
-	"Plugin to render Markdown file - v0.01 (2014/01/01) Written by Yak!",
+	"Plugin to render Markdown/HTML file - v0.10 (2014/01/03) Written by Yak!",
 	"*.md;*.mkd;*.mkdn;*.mdown;*.markdown",
 	"Markdown file",
 	"*.htm;*.html",
@@ -143,10 +143,10 @@ INT PASCAL IsSupported(LPSTR filename, DWORD dw)
 	DEBUG_LOG(<< "IsSupported(" << filename << ',' << std::hex << std::setw(8) << std::setfill('0') << dw << ')' << std::endl);
 	if(HIWORD(dw) == 0) {
 		DEBUG_LOG(<< "File handle" << std::endl);
-		BYTE pb[2048];
-		DWORD dwSize;
-		ReadFile((HANDLE)dw, pb, sizeof(pb), &dwSize, NULL);
-		return IsSupportedImp(filename, pb);;
+//		BYTE pb[2048];
+//		DWORD dwSize;
+//		ReadFile((HANDLE)dw, pb, sizeof(pb), &dwSize, NULL);
+		return IsSupportedImp(filename, 0 /*pb*/);;
 	} else {
 		DEBUG_LOG(<< "Pointer" << std::endl); // By afx
 		return IsSupportedImp(filename, (LPBYTE)dw);;

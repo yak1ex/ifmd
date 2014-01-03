@@ -25,38 +25,39 @@
 //
 // Dialog resources
 //
-IDD_ABOUT_DIALOG DIALOGEX 0, 0, 150, 65
+IDD_ABOUT_DIALOG DIALOGEX 0, 0, 150, 70
 STYLE DS_MODALFRAME | DS_SHELLFONT | WS_CAPTION | WS_POPUP | WS_SYSMENU
 CAPTION "About ifmd.spi"
 FONT 8, "MS Shell Dlg", 400, 0, 1
 BEGIN
-    DEFPUSHBUTTON   "OK", IDOK, 46, 45, 50, 14
-    LTEXT           "ifmd.spi  v0.01 (2014/01/01)", IDC_STATIC, 10, 7, 116, 10, SS_LEFT
-    LTEXT           "A Susie plugin to render Markdown file", IDC_STATIC, 17, 17, 132, 12, SS_LEFT
-    LTEXT           "Written by Yak!", IDC_STATIC, 17, 30, 62, 12, SS_LEFT
+    DEFPUSHBUTTON   "OK", IDOK, 46, 52, 50, 14
+    LTEXT           "ifmd.spi  v0.10 (2014/01/03)", IDC_STATIC, 10, 7, 116, 10, SS_LEFT
+    LTEXT           "A Susie plugin to render", IDC_STATIC, 17, 17, 79, 8, SS_LEFT
+    LTEXT           "Written by Yak!", IDC_STATIC, 17, 38, 62, 12, SS_LEFT
+    LTEXT           "Markdown/HTML file", IDC_STATIC, 74, 29, 67, 8, SS_LEFT
 END
 
 
 
-IDD_CONFIG_DIALOG DIALOGEX 0, 0, 198, 126
+IDD_CONFIG_DIALOG DIALOGEX 0, 0, 198, 120
 STYLE DS_MODALFRAME | DS_SHELLFONT | WS_CAPTION | WS_POPUP | WS_SYSMENU
 CAPTION "ifmd.spi config"
 FONT 8, "MS Shell Dlg", 400, 0, 1
 BEGIN
     LTEXT           "Initial size(&I)", -1, 9, 4, 44, 8, SS_LEFT
-    LTEXT           "W:", -1, 13, 20, 10, 8, SS_LEFT
-    EDITTEXT        IDC_EDIT_INITIAL_W, 26, 19, 39, 14, WS_GROUP | ES_AUTOHSCROLL
-    LTEXT           "x", -1, 73, 21, 4, 8, SS_LEFT
-    LTEXT           "H:", -1, 84, 21, 10, 8, SS_LEFT
-    EDITTEXT        IDC_EDIT_INITIAL_H, 95, 19, 40, 14, ES_AUTOHSCROLL
-    PUSHBUTTON      "Default(&F)", IDC_SET_DEFAULT_SIZE, 145, 19, 50, 14
+    LTEXT           "W:", -1, 13, 18, 10, 8, SS_LEFT
+    EDITTEXT        IDC_EDIT_INITIAL_W, 26, 17, 39, 14, WS_GROUP | ES_AUTOHSCROLL
+    LTEXT           "x", -1, 73, 19, 8, 8, SS_LEFT
+    LTEXT           "H:", -1, 84, 19, 10, 8, SS_LEFT
+    EDITTEXT        IDC_EDIT_INITIAL_H, 95, 17, 40, 14, ES_AUTOHSCROLL
+    PUSHBUTTON      "Default(&F)", IDC_SET_DEFAULT_SIZE, 145, 17, 50, 14
     LTEXT           "Markdown extension(&E)", -1, 9, 40, 79, 8, SS_LEFT
     EDITTEXT        IDC_EDIT_EXTENSION, 9, 51, 132, 14, WS_GROUP | ES_AUTOHSCROLL
     LTEXT           "HTML extension(&H)", -1, 9, 69, 67, 8, SS_LEFT
     EDITTEXT        IDC_EDIT_HTML_EXTENSION, 9, 80, 132, 14, ES_AUTOHSCROLL
     PUSHBUTTON      "Default(&D)", IDC_SET_DEFAULT, 145, 66, 50, 14
-    DEFPUSHBUTTON   "&OK", IDOK, 41, 103, 43, 14, WS_GROUP
-    PUSHBUTTON      "&Cancel", IDCANCEL, 106, 103, 40, 14
+    DEFPUSHBUTTON   "&OK", IDOK, 41, 101, 43, 14, WS_GROUP
+    PUSHBUTTON      "&Cancel", IDCANCEL, 106, 101, 40, 14
 END
 
 
@@ -65,8 +66,8 @@ END
 // Version Information resources
 //
 IDV_VERSIONINFO VERSIONINFO
-    FILEVERSION     0,1,2014,101
-    PRODUCTVERSION  0,1,2014,101
+    FILEVERSION     0,10,2014,103
+    PRODUCTVERSION  0,10,2014,103
     FILEOS          VOS_NT_WINDOWS32
     FILETYPE        VFT_DLL
     FILESUBTYPE     VFT2_UNKNOWN
@@ -82,13 +83,13 @@ BEGIN
         BLOCK "041103A4"
         BEGIN
             VALUE "CompanyName", "Yak!"
-            VALUE "FileDescription", "ifmd.spi - A Susie plugin to render Markdown file"
-            VALUE "FileVersion", "Ver 0.01 (2014/01/01)"
+            VALUE "FileDescription", "ifmd.spi - A Susie plugin to render Markdown/HTML file"
+            VALUE "FileVersion", "Ver 0.10 (2014/01/03)"
             VALUE "InternalName", "ifmd.spi"
             VALUE "LegalCopyright", "Written by Yak!"
             VALUE "OriginalFilename", "ifmd.spi"
             VALUE "ProductName", "ifmd.spi"
-            VALUE "ProductVersion", "Ver 0.01 (2014/01/01)"
+            VALUE "ProductVersion", "Ver 0.10 (2014/01/03)"
 #ifdef DEBUG
             VALUE "PrivateBuild", "Debug build"
 #endif

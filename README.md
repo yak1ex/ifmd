@@ -1,7 +1,7 @@
 ifmd.spi
 ========
 
-A Susie plugin for Markdown document. This is alpha state but works anyway.
+A Susie plugin for Markdown/HTML document. This is alpha state but works anyway.
 
 Build
 -----
@@ -13,7 +13,9 @@ Build
 Configuration
 -------------
 
-You can configure supported extensions from configuration dialog. Defaults to "\*.md;\*.mkd;\*.mkdn;\*.mdown;\*.markdown".
+Initial size can be specified. Please note that this is not the size of an output image. Actual size may be expanded.
+
+You can configure supported extensions from configuration dialog. Defaults to "\*.md;\*.mkd;\*.mkdn;\*.mdown;\*.markdown" for Markdown and "\*.htm;\*.html" for HTML.
 
 Acknowledgement
 ---------------
@@ -25,7 +27,10 @@ Acknowledgement
 Known limitation
 ----------------
 
-- ANSI codepage (CP932 for Japanese Windows, which is considered as Shift_JIS equivalent) is used.
+- Character encoding can not be overridden.
+- Sometime scroll bar appears.
+- When passed by memory, a file having a extension specified as HTML could be treated as Markdown.
+- A plain text file as HTML is rendered wihtout line-wrap.
 - 24-bit BMP is used even though 2 bits are enough.
 - It might produce a very large image.
 
