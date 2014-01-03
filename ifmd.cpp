@@ -103,6 +103,7 @@ INT PASCAL GetPluginInfo(INT infono, LPSTR buf, INT buflen)
 
 static bool HasTargetExtension(const std::string &filename, const std::string &extensions)
 {
+	DEBUG_LOG(<< "HasTargetExtension(" << filename << ',' << extensions << ')' << std::endl);
 	const char* start = extensions.c_str();
 	while(1) {
 		while(*start && *start != '.') {
@@ -114,12 +115,13 @@ static bool HasTargetExtension(const std::string &filename, const std::string &e
 			++end;
 		}
 		std::string ext(start, end);
-		if(filename.size() <= ext.size()) continue;
-		if(!lstrcmpi(filename.substr(filename.size() - ext.size()).c_str(), ext.c_str())) {
+		if(filename.size() > ext.size() && !lstrcmpi(filename.substr(filename.size() - ext.size()).c_str(), ext.c_str())) {
+			DEBUG_LOG(<< "HasTargetExtension(): true" << std::endl);
 			return true;
 		}
 		++start;
 	}
+	DEBUG_LOG(<< "HasTargetExtension(): false" << std::endl);
 	return false;
 }
 
