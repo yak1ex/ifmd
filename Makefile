@@ -17,8 +17,8 @@ VER=0_01
 CC = i686-w64-mingw32-gcc
 CXX = i686-w64-mingw32-g++
 ifdef DEBUG
-CFLAGS = -DDEBUG -Wall -O3 -flto
-CXXFLAGS = -DDEBUG -Wall -O3 -flto -I /usr/local/include -I ./odstream
+CFLAGS = -DDEBUG -Wall -O3 -g -flto
+CXXFLAGS = -DDEBUG -Wall -O3 -g -flto -I /usr/local/include -I ./odstream
 WINDRESFLAGS = -D DEBUG
 else
 CFLAGS = -Wall -O3 -flto
