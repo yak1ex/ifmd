@@ -66,7 +66,7 @@ strip: $(NAME).spi
 	strip $^
 
 bump:
-	./bump.sh $(VER)
+	./verbump.sh $(VER) $(NAME).{txt,rc,cpp}
 	
 dist: release-clean release/$(NAME).spi
 	-rm -rf source source.zip $(NAME)-$(VER).zip disttemp
